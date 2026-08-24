@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Personal task tracker with subtasks, priorities, due dates, attachments, and Excel import.">
+<meta name="theme-color" content="#2563eb">
+<meta name="robots" content="noindex, nofollow">
+<title>Task Tracker</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✓</text></svg>">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f7f5;--surface:#fff;--surface2:#f2f2ef;--border:#e4e4e0;--border-strong:#c8c8c2;
+  --text:#1a1a18;--text-mid:#5a5a54;--text-muted:#9a9a92;
+  --accent:#2563eb;--accent-soft:#eff4ff;
+  --high:#dc2626;--high-soft:#fef2f2;--med:#d97706;--med-soft:#fffbeb;--low:#16a34a;--low-soft:#f0fdf4;
+  --done-text:#9a9a92;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08),0 2px 4px rgba(0,0,0,.05);
+  --radius:8px;--radius-sm:5px;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5}
+.app{max-width:860px;margin:0 auto;padding:32px 20px 80px}
+
+/* ── HEADER ── */
+header{margin-bottom:24px}
+.header-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-size:22px;font-weight:600;letter-spacing:-.3px}
+.stats{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted)}
+.stats span{color:var(--accent);font-weight:500}
+.progress-bar{height:3px;background:var(--border);border-radius:99px;margin-top:10px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:99px;transition:width .4s ease}
+
+/* ── TABS ── */
+.tab-bar{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px}
+.tab-btn{background:none;border:none;padding:9px 18px;font-size:13px;font-family:'Inter',sans-serif;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:500;transition:all .15s}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-btn:hover:not(.active){color:var(--text)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* ── CONTROLS ── */
+.controls{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.filter-group{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:3px}
+.filter-btn{background:none;border:none;padding:5px 11px;border-radius:4px;font-size:12px;font-family:'Inter',sans-serif;color:var(--text-mid);cursor:pointer;transition:all .15s;white-space:nowrap}
+.filter-btn.active{background:var(--accent);color:#fff;font-weight:500}
+.filter-btn:hover:not(.active){background:var(--surface2)}
+select.filter-select{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 10px;font-size:12px;font-family:'Inter',sans-serif;color:var(--text-mid);cursor:pointer;outline:none}
+select.filter-select:focus{border-color:var(--accent)}
+.spacer{flex:1}
+.btn-primary{background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:6px 14px;font-size:13px;font-weight:500;font-family:'Inter',sans-serif;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .15s;white-space:nowrap}
+.btn-primary:hover{background:#1d4ed8}
+.btn-outline{background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 12px;font-size:13px;font-family:'Inter',sans-serif;color:var(--text-mid);cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s;white-space:nowrap}
+.btn-outline:hover{background:var(--surface2);border-color:var(--border-strong)}
+
+/* ── FORM ── */
+.add-form{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px;box-shadow:var(--shadow);display:none}
+.add-form.open{display:block}
+.form-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.form-row:last-child{margin-bottom:0}
+.form-input,.form-select,.form-textarea{font-family:'Inter',sans-serif;font-size:13px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 10px;outline:none;transition:border-color .15s;background:var(--bg);color:var(--text)}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent);background:#fff}
+.form-input.title-input{flex:1;min-width:200px;font-weight:500}
+.form-select{cursor:pointer}
+.form-input[type="date"]{cursor:pointer}
+.form-textarea{width:100%;min-height:60px;resize:vertical}
+.form-section-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:6px;margin-top:4px}
+
+/* Category row with new cat */
+.cat-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.new-cat-inline{display:none;gap:6px;align-items:center}
+.new-cat-inline.open{display:flex}
+.btn-new-cat{background:none;border:1px dashed var(--border-strong);border-radius:var(--radius-sm);padding:5px 10px;font-size:12px;font-family:'Inter',sans-serif;color:var(--accent);cursor:pointer;white-space:nowrap}
+.btn-new-cat:hover{background:var(--accent-soft)}
+.cat-input-small{font-family:'Inter',sans-serif;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 9px;outline:none;background:var(--bg);width:140px}
+.cat-input-small:focus{border-color:var(--accent);background:#fff}
+.btn-xs{font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);cursor:pointer;font-family:'Inter',sans-serif;color:var(--text-mid)}
+.btn-xs.confirm{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-xs:hover:not(.confirm){background:var(--surface2)}
+
+/* Attachments */
+.attachment-zone{border:1px dashed var(--border-strong);border-radius:var(--radius-sm);padding:12px;text-align:center;cursor:pointer;color:var(--text-muted);font-size:12px;transition:all .15s}
+.attachment-zone:hover{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.attachment-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.attach-chip{display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:3px 10px 3px 8px;font-size:11px;color:var(--text-mid);max-width:200px}
+.attach-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attach-chip button{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:11px;flex-shrink:0;padding:0 1px}
+.attach-chip button:hover{color:var(--high)}
+.screenshot-btn{display:flex;align-items:center;gap:6px;background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 12px;font-size:12px;font-family:'Inter',sans-serif;color:var(--text-mid);cursor:pointer;transition:all .15s}
+.screenshot-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+
+.form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+.btn-cancel{background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 14px;font-size:13px;font-family:'Inter',sans-serif;color:var(--text-mid);cursor:pointer}
+.btn-cancel:hover{background:var(--surface2)}
+.btn-save{background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:6px 16px;font-size:13px;font-weight:500;font-family:'Inter',sans-serif;cursor:pointer}
+.btn-save:hover{background:#1d4ed8}
+
+/* ── TASK CARD ── */
+#task-list{display:flex;flex-direction:column;gap:8px}
+.empty-state{text-align:center;padding:48px 20px;color:var(--text-muted)}
+.empty-state .emoji{font-size:32px;margin-bottom:10px}
+.task-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);transition:box-shadow .15s}
+.task-card:hover{box-shadow:var(--shadow-md)}
+.task-card.done{opacity:.65}
+.task-main{display:flex;align-items:flex-start;gap:10px;padding:12px 14px}
+.task-check{width:18px;height:18px;border-radius:50%;border:2px solid var(--border-strong);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all .15s;cursor:pointer}
+.task-check:hover{border-color:var(--accent);background:var(--accent-soft)}
+.task-card.done .task-check{background:var(--accent);border-color:var(--accent)}
+.task-check-icon{display:none;color:#fff;font-size:10px;font-weight:700}
+.task-card.done .task-check-icon{display:block}
+.task-body{flex:1;min-width:0}
+.task-title{font-size:14px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task-card.done .task-title{text-decoration:line-through;color:var(--done-text)}
+.task-meta{display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap}
+.badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;letter-spacing:.3px;text-transform:uppercase}
+.badge-high{background:var(--high-soft);color:var(--high)}
+.badge-med{background:var(--med-soft);color:var(--med)}
+.badge-low{background:var(--low-soft);color:var(--low)}
+.badge-cat{background:var(--accent-soft);color:var(--accent);text-transform:none;font-weight:500;letter-spacing:0;font-size:11px}
+.due-date{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-muted)}
+.due-date.overdue{color:var(--high);font-weight:600}
+.due-date.today{color:var(--med);font-weight:600}
+.subtask-count{font-size:11px;color:var(--text-muted)}
+.attach-count{font-size:11px;color:var(--text-muted)}
+.task-actions{display:flex;gap:2px;align-items:center;flex-shrink:0}
+.icon-btn{background:none;border:none;padding:4px 6px;border-radius:4px;cursor:pointer;color:var(--text-muted);font-size:13px;line-height:1;transition:all .15s;opacity:0}
+.task-card:hover .icon-btn{opacity:1}
+.icon-btn:hover{background:var(--surface2);color:var(--text)}
+.icon-btn.delete:hover{background:var(--high-soft);color:var(--high)}
+.expand-btn{background:none;border:none;padding:4px 6px;border-radius:4px;cursor:pointer;color:var(--text-muted);font-size:11px;line-height:1;transition:transform .2s}
+.expand-btn.open{transform:rotate(180deg)}
+
+/* ── COLUMN HEADERS ── */
+.col-headers{display:grid;grid-template-columns:26px 1fr 90px 110px 110px 72px;align-items:center;gap:0;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 14px;margin-bottom:6px}
+.col-hdr{display:flex;align-items:center;gap:4px;padding:7px 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.45px;color:var(--text-muted);user-select:none;white-space:nowrap}
+.col-hdr.sortable{cursor:pointer;transition:color .12s}
+.col-hdr.sortable:hover{color:var(--accent)}
+.col-hdr.sorted{color:var(--accent)}
+.sort-arrow{font-size:10px;opacity:.5;flex-shrink:0}
+.col-hdr.sorted .sort-arrow{opacity:1}
+/* filter dropdowns that live inside column headers */
+.hdr-filter{font-family:'Inter',sans-serif;font-size:11px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;outline:none;padding:0;max-width:90px;font-weight:600;text-transform:uppercase;letter-spacing:.45px}
+.hdr-filter:focus{color:var(--accent)}
+.hdr-filter.active{color:var(--accent)}
+/* date-range filter row */
+.date-filter-row{display:none;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);padding:7px 14px;margin-bottom:6px;margin-top:-6px;flex-wrap:wrap}
+.date-filter-row.open{display:flex}
+.date-filter-row label{font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.date-filter-row input{font-family:'Inter',sans-serif;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px 8px;outline:none;background:var(--bg);color:var(--text);cursor:pointer}
+.date-filter-row input:focus{border-color:var(--accent);background:#fff}
+.btn-clear-date{font-size:11px;background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px 4px;border-radius:3px}
+.btn-clear-date:hover{color:var(--high)}
+
+/* ── EXPANDED AREA ── */
+.task-expanded{display:none;border-top:1px solid var(--border);padding:14px 14px 16px}
+.task-expanded.open{display:block}
+.expand-section{margin-bottom:14px}
+.expand-section:last-child{margin-bottom:0}
+.expand-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:7px}
+.notes-display{font-size:13px;color:var(--text-mid);white-space:pre-wrap;line-height:1.6;cursor:pointer}
+.notes-display:hover{color:var(--text)}
+.notes-placeholder{font-size:13px;color:var(--text-muted);font-style:italic;cursor:pointer}
+.notes-placeholder:hover{color:var(--accent)}
+.notes-edit{width:100%;font-family:'Inter',sans-serif;font-size:13px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 10px;outline:none;resize:vertical;min-height:70px;background:var(--bg);color:var(--text);display:none}
+.notes-edit:focus{border-color:var(--accent);background:#fff}
+.notes-footer{display:none;gap:8px;margin-top:6px;align-items:center}
+.notes-footer.vis{display:flex}
+
+/* Subtask full-form */
+.subtask-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.subtask-item{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 10px}
+.subtask-top{display:flex;align-items:center;gap:8px}
+.subtask-check{width:15px;height:15px;border-radius:4px;border:1.5px solid var(--border-strong);flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.subtask-check:hover{border-color:var(--accent);background:var(--accent-soft)}
+.subtask-check.done{background:var(--accent);border-color:var(--accent)}
+.subtask-check-icon{display:none;color:#fff;font-size:9px;font-weight:700}
+.subtask-check.done .subtask-check-icon{display:block}
+.subtask-text{font-size:13px;color:var(--text);flex:1}
+.subtask-check.done ~ .subtask-text{text-decoration:line-through;color:var(--text-muted)}
+.subtask-meta{display:flex;gap:5px;margin-top:4px;margin-left:23px;flex-wrap:wrap}
+.subtask-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;padding:0 3px;flex-shrink:0;opacity:0;transition:opacity .15s}
+.subtask-item:hover .subtask-del{opacity:1}
+.subtask-del:hover{color:var(--high)}
+
+/* add-subtask form */
+.add-subtask-form{background:var(--bg);border:1px dashed var(--border-strong);border-radius:var(--radius-sm);padding:10px;display:none}
+.add-subtask-form.open{display:block}
+.add-sub-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.sub-form-input{font-family:'Inter',sans-serif;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 9px;outline:none;background:#fff;color:var(--text)}
+.sub-form-input:focus{border-color:var(--accent)}
+.sub-form-input.sub-title{flex:1;min-width:160px}
+.add-sub-actions{display:flex;gap:6px;justify-content:flex-end}
+.btn-open-sub-form{background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px;font-size:12px;font-family:'Inter',sans-serif;color:var(--text-mid);cursor:pointer;display:flex;align-items:center;gap:5px}
+.btn-open-sub-form:hover{background:var(--surface2)}
+
+/* Attachments in expanded */
+.attach-grid{display:flex;flex-wrap:wrap;gap:6px}
+.attach-thumb{position:relative;width:72px;height:72px;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;cursor:pointer;background:var(--surface2)}
+.attach-thumb img{width:100%;height:100%;object-fit:cover}
+.attach-thumb .attach-label{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.55);color:#fff;font-size:9px;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.attach-thumb .attach-remove{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s}
+.attach-thumb:hover .attach-remove{opacity:1}
+.attach-file-chip{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 10px;font-size:11px;color:var(--text-mid);cursor:pointer;max-width:180px}
+.attach-file-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.attach-file-chip .del-f{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:11px;flex-shrink:0}
+.attach-file-chip .del-f:hover{color:var(--high)}
+
+/* Lightbox */
+.lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;align-items:center;justify-content:center;cursor:zoom-out}
+.lightbox.open{display:flex}
+.lightbox img{max-width:90vw;max-height:90vh;border-radius:4px;object-fit:contain}
+
+/* ── CATEGORIES TAB ── */
+.cat-manager{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.cat-manager h2{font-size:15px;font-weight:600;margin-bottom:4px}
+.cat-manager p{font-size:13px;color:var(--text-muted);margin-bottom:16px}
+.cat-table{width:100%;border-collapse:collapse}
+.cat-table th{text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);padding:6px 10px;border-bottom:1px solid var(--border)}
+.cat-table td{padding:8px 10px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+.cat-table tr:last-child td{border-bottom:none}
+.cat-built-in{font-size:11px;color:var(--text-muted);font-style:italic}
+.btn-del-cat{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;padding:3px 6px;border-radius:4px;transition:all .15s}
+.btn-del-cat:hover{background:var(--high-soft);color:var(--high)}
+.btn-del-cat:disabled{opacity:.3;cursor:not-allowed}
+.add-cat-row{display:flex;gap:8px;margin-top:14px;align-items:center}
+.add-cat-row input{flex:1;font-family:'Inter',sans-serif;font-size:13px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 10px;outline:none;background:var(--bg);color:var(--text)}
+.add-cat-row input:focus{border-color:var(--accent);background:#fff}
+
+/* ── IMPORT TAB ── */
+.import-panel{display:flex;flex-direction:column;gap:20px}
+.import-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.import-card h2{font-size:15px;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.import-card p{font-size:13px;color:var(--text-muted);margin-bottom:14px}
+.import-actions{display:flex;gap:8px;flex-wrap:wrap}
+.drop-zone{border:2px dashed var(--border-strong);border-radius:var(--radius-sm);padding:28px;text-align:center;cursor:pointer;transition:all .15s;color:var(--text-muted)}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.drop-zone p{font-size:13px;margin-top:6px}
+.import-result{font-size:13px;padding:10px 12px;border-radius:var(--radius-sm);margin-top:10px;display:none}
+.import-result.ok{background:var(--low-soft);color:var(--low);display:block}
+.import-result.err{background:var(--high-soft);color:var(--high);display:block}
+
+/* Email import */
+.email-address-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent);display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.copy-btn{font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:4px;padding:3px 8px;cursor:pointer;font-family:'Inter',sans-serif}
+.email-format{font-size:12px;background:var(--surface2);border-left:3px solid var(--border-strong);padding:10px 14px;border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--text-mid);margin-bottom:14px;font-family:'JetBrains Mono',monospace;line-height:1.7;white-space:pre-wrap}
+.email-paste-area{width:100%;font-family:'JetBrains Mono',monospace;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;outline:none;min-height:100px;background:var(--bg);color:var(--text);resize:vertical}
+.email-paste-area:focus{border-color:var(--accent);background:#fff}
+
+/* toast */
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1a18;color:#fff;padding:10px 18px;border-radius:var(--radius-sm);font-size:13px;box-shadow:var(--shadow-md);z-index:999;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--surface);border-radius:var(--radius);padding:24px;max-width:400px;width:90%;box-shadow:var(--shadow-md)}
+.modal-box h3{font-size:16px;font-weight:600;margin-bottom:8px}
+.modal-box p{font-size:13px;color:var(--text-mid);margin-bottom:18px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+.btn-danger{background:var(--high);color:#fff;border:none;border-radius:var(--radius-sm);padding:7px 16px;font-size:13px;font-weight:500;font-family:'Inter',sans-serif;cursor:pointer}
+.btn-danger:hover{background:#b91c1c}
+
+/* ── EDIT MODAL ── */
+.edit-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;align-items:center;justify-content:center;padding:16px}
+.edit-modal-overlay.open{display:flex}
+.edit-modal-box{background:var(--surface);border-radius:var(--radius);padding:24px;width:100%;max-width:520px;box-shadow:var(--shadow-md);max-height:90vh;overflow-y:auto}
+.edit-modal-box h3{font-size:16px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.edit-modal-box h3 span{font-size:12px;font-weight:400;color:var(--text-muted);margin-left:auto}
+.edit-field{margin-bottom:12px}
+.edit-field label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:5px}
+.edit-field input,.edit-field select,.edit-field textarea{width:100%;font-family:'Inter',sans-serif;font-size:13px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;outline:none;background:var(--bg);color:var(--text);transition:border-color .15s}
+.edit-field input:focus,.edit-field select:focus,.edit-field textarea:focus{border-color:var(--accent);background:#fff}
+.edit-field textarea{min-height:80px;resize:vertical}
+.edit-field select{cursor:pointer}
+.edit-field-row{display:flex;gap:8px}
+.edit-field-row .edit-field{flex:1}
+.edit-modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.edit-cat-row{display:flex;gap:6px;align-items:center}
+.edit-cat-row select{flex:1}
+
+@media(max-width:540px){
+  .app{padding:20px 12px 60px}
+  .import-actions{flex-direction:column}
+  .add-form{padding:14px}
+  .edit-field-row{flex-direction:column}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header>
+  <div class="header-top"><h1>Task Tracker</h1><div class="stats" id="stats">— / — done</div></div>
+  <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+</header>
+
+<!-- Tabs -->
+<div class="tab-bar">
+  <button class="tab-btn active" data-tab="tasks">Tasks</button>
+  <button class="tab-btn" data-tab="categories">Categories</button>
+  <button class="tab-btn" data-tab="import">Import</button>
+</div>
+
+<!-- ═══════════ TASKS TAB ═══════════ -->
+<div class="tab-panel active" id="tab-tasks">
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="filter-group">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="active">Active</button>
+      <button class="filter-btn" data-filter="done">Done</button>
+    </div>
+    <select class="filter-select" id="priority-filter" style="display:none">
+      <option value="all">All priorities</option>
+      <option value="high">High</option>
+      <option value="med">Medium</option>
+      <option value="low">Low</option>
+    </select>
+    <select class="filter-select" id="cat-filter" style="display:none"><option value="all">All categories</option></select>
+    <div class="spacer"></div>
+    <button class="btn-primary" id="btn-add-task">＋ Add task</button>
+  </div>
+
+  <!-- Add Task Form -->
+  <div class="add-form" id="add-form">
+    <div class="form-row">
+      <input class="form-input title-input" id="f-title" type="text" placeholder="Task title…" />
+    </div>
+    <div class="form-row">
+      <select class="form-select" id="f-priority">
+        <option value="med">Medium priority</option>
+        <option value="high">High priority</option>
+        <option value="low">Low priority</option>
+      </select>
+      <input class="form-input" id="f-due" type="date" title="Due date" />
+      <div class="cat-row">
+        <select class="form-select" id="f-cat"></select>
+        <button class="btn-new-cat" id="btn-inline-new-cat" type="button">+ New category</button>
+        <div class="new-cat-inline" id="new-cat-inline">
+          <input class="cat-input-small" id="new-cat-name" placeholder="Category name…" />
+          <button class="btn-xs confirm" id="btn-confirm-cat">Add</button>
+          <button class="btn-xs" id="btn-cancel-cat">✕</button>
+        </div>
+      </div>
+    </div>
+    <div class="form-section-label">Notes</div>
+    <textarea class="form-textarea" id="f-notes" placeholder="Notes (optional)…"></textarea>
+    <div class="form-row" style="margin-top:8px;gap:8px">
+      <button class="screenshot-btn" id="btn-screenshot-form" type="button">📷 Capture screenshot</button>
+      <label class="screenshot-btn" style="cursor:pointer">
+        📎 Attach file
+        <input type="file" id="f-attach-file" multiple style="display:none" accept="*/*">
+      </label>
+    </div>
+    <div id="form-attachments" class="attachment-list"></div>
+    <div id="form-screenshots" class="attachment-list"></div>
+    <div class="form-actions">
+      <button class="btn-cancel" id="btn-cancel">Cancel</button>
+      <button class="btn-save" id="btn-save">Add task</button>
+    </div>
+  </div>
+
+  <!-- Column Headers -->
+  <div class="col-headers" id="col-headers">
+    <div class="col-hdr"></div><!-- checkbox spacer -->
+    <div class="col-hdr sortable" data-sort="title" id="hdr-title">
+      Task name <span class="sort-arrow" id="arr-title">↕</span>
+    </div>
+    <div class="col-hdr" style="justify-content:center">
+      <select class="hdr-filter" id="hdr-priority-filter" title="Filter by priority">
+        <option value="all">Priority</option>
+        <option value="high">High</option>
+        <option value="med">Medium</option>
+        <option value="low">Low</option>
+      </select>
+      <span class="sort-arrow sortable" data-sort="priority" id="arr-priority" title="Sort by priority" style="cursor:pointer;margin-left:2px">↕</span>
+    </div>
+    <div class="col-hdr" style="justify-content:center">
+      <select class="hdr-filter" id="hdr-cat-filter" title="Filter by category">
+        <option value="all">Category</option>
+      </select>
+      <span class="sort-arrow sortable" data-sort="cat" id="arr-cat" title="Sort by category" style="cursor:pointer;margin-left:2px">↕</span>
+    </div>
+    <div class="col-hdr sortable" data-sort="due" id="hdr-due" style="cursor:pointer">
+      Due date <span class="sort-arrow" id="arr-due">↕</span>
+      <span id="hdr-due-filter-icon" title="Filter by date range" style="margin-left:4px;font-size:12px;cursor:pointer" data-date-toggle="1">📅</span>
+    </div>
+    <div class="col-hdr" style="justify-content:flex-end;padding-right:2px">
+      <button id="btn-reset-sort" title="Clear all sorting and column filters" style="background:none;border:none;font-size:10px;color:var(--text-muted);cursor:pointer;padding:2px 4px;border-radius:3px;font-family:Inter,sans-serif;white-space:nowrap">✕ Reset</button>
+    </div>
+  </div>
+
+  <!-- Date range filter (slides open under headers) -->
+  <div class="date-filter-row" id="date-filter-row">
+    <label>From</label>
+    <input type="date" id="due-from">
+    <label>To</label>
+    <input type="date" id="due-to">
+    <button class="btn-clear-date" id="btn-clear-date">Clear</button>
+  </div>
+
+  <!-- Task List -->
+  <div id="task-list"></div>
+</div>
+
+<!-- ═══════════ CATEGORIES TAB ═══════════ -->
+<div class="tab-panel" id="tab-categories">
+  <div class="cat-manager">
+    <h2>Category Management</h2>
+    <p>Built-in categories cannot be deleted. Custom categories can be removed if no tasks use them.</p>
+    <table class="cat-table">
+      <thead><tr><th>Category</th><th>Tasks</th><th>Type</th><th></th></tr></thead>
+      <tbody id="cat-table-body"></tbody>
+    </table>
+    <div class="add-cat-row">
+      <input type="text" id="new-cat-manage" placeholder="New category name…" />
+      <button class="btn-primary" id="btn-add-cat-manage">Add category</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ IMPORT TAB ═══════════ -->
+<div class="tab-panel" id="tab-import">
+  <div class="import-panel">
+
+    <!-- Excel import -->
+    <div class="import-card">
+      <h2>📊 Import from Excel</h2>
+      <p>Upload a spreadsheet to bulk-create tasks. Download the template to see the required format.</p>
+      <div class="import-actions">
+        <button class="btn-primary" id="btn-dl-template">⬇ Download template</button>
+        <label class="btn-outline" style="cursor:pointer">
+          ⬆ Upload Excel file
+          <input type="file" id="excel-upload" accept=".xlsx,.xls,.csv" style="display:none">
+        </label>
+      </div>
+      <div class="drop-zone" id="excel-drop">
+        <div style="font-size:28px">📂</div>
+        <p>Or drag and drop your Excel file here</p>
+      </div>
+      <div class="import-result" id="excel-result"></div>
+    </div>
+
+    <!-- Email import -->
+    <div class="import-card">
+      <h2>📧 Import via Email</h2>
+      <p>Send an email to the address below with a structured format, then paste the email content here to create tasks automatically.</p>
+      <div class="email-address-box">
+        <span id="dummy-email">tasks+import@mytasktracker.io</span>
+        <button class="copy-btn" id="btn-copy-email">Copy</button>
+      </div>
+      <div class="form-section-label" style="margin-bottom:6px">Expected email format</div>
+      <div class="email-format">Subject: TASK: [Your task title here]
+
+TITLE: Complete vendor onboarding review
+PRIORITY: High
+CATEGORY: SCB
+DUE: 2026-09-15
+NOTES: Check SAP Ariba portal for pending contracts
+
+SUBTASK: Review contract attachments | High | 2026-09-10
+SUBTASK: Confirm vendor details | Medium</div>
+      <div class="form-section-label" style="margin-bottom:6px;margin-top:14px">Paste email content to import</div>
+      <textarea class="email-paste-area" id="email-paste" placeholder="Paste email content here…"></textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px">
+        <button class="btn-primary" id="btn-parse-email">Parse &amp; create task</button>
+      </div>
+      <div class="import-result" id="email-result"></div>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<!-- Edit Task Modal -->
+<div class="edit-modal-overlay" id="edit-modal">
+  <div class="edit-modal-box">
+    <h3>✏️ Edit task <span id="edit-modal-created"></span></h3>
+    <input type="hidden" id="edit-task-id">
+    <div class="edit-field">
+      <label>Title</label>
+      <input type="text" id="edit-title" placeholder="Task title…">
+    </div>
+    <div class="edit-field-row">
+      <div class="edit-field">
+        <label>Priority</label>
+        <select id="edit-priority">
+          <option value="high">High</option>
+          <option value="med">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+      <div class="edit-field">
+        <label>Due date</label>
+        <input type="date" id="edit-due">
+      </div>
+    </div>
+    <div class="edit-field">
+      <label>Category</label>
+      <div class="edit-cat-row">
+        <select id="edit-cat"></select>
+        <button class="btn-new-cat" id="edit-btn-new-cat" type="button">+ New</button>
+      </div>
+      <div class="new-cat-inline" id="edit-new-cat-inline" style="margin-top:6px">
+        <input class="cat-input-small" id="edit-new-cat-name" placeholder="Category name…">
+        <button class="btn-xs confirm" id="edit-btn-confirm-cat">Add</button>
+        <button class="btn-xs" id="edit-btn-cancel-cat">✕</button>
+      </div>
+    </div>
+    <div class="edit-field">
+      <label>Notes</label>
+      <textarea id="edit-notes" placeholder="Notes…"></textarea>
+    </div>
+    <div class="edit-modal-actions">
+      <button class="btn-cancel" id="edit-modal-cancel">Cancel</button>
+      <button class="btn-save" id="edit-modal-save">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox"><img id="lightbox-img" src="" alt=""></div>
+
+<!-- Confirm modal -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal-box">
+    <h3 id="modal-title">Confirm</h3>
+    <p id="modal-msg">Are you sure?</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="modal-cancel">Cancel</button>
+      <button class="btn-danger" id="modal-confirm">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════
+// STORAGE
+// ══════════════════════════════════════
+const SK_TASKS = 'tt_tasks_v2';
+const SK_CATS  = 'tt_cats_v2';
+const BUILT_IN = ['SCB','Internal','Admin','Personal'];
+
+function loadTasks(){ try{ return JSON.parse(localStorage.getItem(SK_TASKS))||[]; }catch{ return []; } }
+function saveTasks(){ localStorage.setItem(SK_TASKS, JSON.stringify(tasks)); }
+function loadCats(){
+  const stored = JSON.parse(localStorage.getItem(SK_CATS)||'null');
+  return stored || [...BUILT_IN];
+}
+function saveCats(){ localStorage.setItem(SK_CATS, JSON.stringify(categories)); }
+
+let tasks = loadTasks();
+let categories = loadCats();
+let formAttachments = [];
+
+// SORT & FILTER STATE
+// ══════════════════════════════════════
+let filterStatus = 'all';
+// column header filters (independent of sidebar selects)
+let colFilterPriority = 'all';
+let colFilterCat = 'all';
+let colDueFrom = '';
+let colDueTo = '';
+// sort state
+let sortField = null;   // 'title' | 'priority' | 'cat' | 'due'
+let sortDir = 'asc';
+
+const PRIORITY_ORDER = { high: 0, med: 1, low: 2 };
+
+function applyFiltersAndSort(list) {
+  let out = list.filter(t => {
+    if (filterStatus === 'active' && t.done) return false;
+    if (filterStatus === 'done' && !t.done) return false;
+    if (colFilterPriority !== 'all' && t.priority !== colFilterPriority) return false;
+    if (colFilterCat !== 'all' && t.cat !== colFilterCat) return false;
+    if (colDueFrom && (t.due || '') < colDueFrom) return false;
+    if (colDueTo && (t.due || '9999') > colDueTo) return false;
+    return true;
+  });
+
+  if (sortField) {
+    out = [...out].sort((a, b) => {
+      let av, bv;
+      if (sortField === 'title') {
+        av = (a.title || '').toLowerCase(); bv = (b.title || '').toLowerCase();
+      } else if (sortField === 'priority') {
+        av = PRIORITY_ORDER[a.priority] ?? 1; bv = PRIORITY_ORDER[b.priority] ?? 1;
+      } else if (sortField === 'cat') {
+        av = (a.cat || '').toLowerCase(); bv = (b.cat || '').toLowerCase();
+      } else if (sortField === 'due') {
+        av = a.due || '9999-99-99'; bv = b.due || '9999-99-99';
+      }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+  return out;
+}
+
+function updateSortArrows() {
+  const fields = ['title', 'priority', 'cat', 'due'];
+  fields.forEach(f => {
+    const el = document.getElementById(`arr-${f}`);
+    if (!el) return;
+    if (sortField === f) {
+      el.textContent = sortDir === 'asc' ? '↑' : '↓';
+      el.style.opacity = '1';
+      el.style.color = 'var(--accent)';
+    } else {
+      el.textContent = '↕';
+      el.style.opacity = '0.4';
+      el.style.color = '';
+    }
+  });
+}
+
+function updateHdrFilterActive() {
+  const pp = document.getElementById('hdr-priority-filter');
+  const cp = document.getElementById('hdr-cat-filter');
+  if (pp) pp.classList.toggle('active', colFilterPriority !== 'all');
+  if (cp) cp.classList.toggle('active', colFilterCat !== 'all');
+}
+
+function populateHdrCatFilter() {
+  const sel = document.getElementById('hdr-cat-filter');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="all">Category</option>';
+  categories.forEach(c => {
+    const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o);
+  });
+  if (categories.includes(prev)) sel.value = prev;
+  else sel.value = colFilterCat;
+}
+
+// ══════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════
+function render() {
+  const total = tasks.length, done = tasks.filter(t => t.done).length;
+  document.getElementById('stats').innerHTML = `<span>${done}</span> / ${total} done`;
+  document.getElementById('progress').style.width = total ? `${(done / total) * 100}%` : '0%';
+
+  updateSortArrows();
+  updateHdrFilterActive();
+
+  const filtered = applyFiltersAndSort(tasks);
+
+  const list = document.getElementById('task-list');
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-state"><div class="emoji">✓</div><p>${!total ? 'No tasks yet — add one to get started.' : 'No tasks match the current filters.'}</p></div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(t => taskHTML(t)).join('');
+  attachCardHandlers();
+}
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function esc(s){ if(!s)return''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(msg, dur=2800){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), dur);
+}
+function confirm(title, msg, cb){
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-msg').textContent=msg;
+  document.getElementById('confirm-modal').classList.add('open');
+  const yes=document.getElementById('modal-confirm');
+  const no=document.getElementById('modal-cancel');
+  const close=()=>document.getElementById('confirm-modal').classList.remove('open');
+  yes.onclick=()=>{ close(); cb(); };
+  no.onclick=close;
+}
+
+function formatDate(d){
+  if(!d)return null;
+  const today=new Date().toISOString().slice(0,10);
+  const tom=new Date(Date.now()+86400000).toISOString().slice(0,10);
+  if(d===today)return{label:'Today',cls:'today'};
+  if(d===tom)return{label:'Tomorrow',cls:''};
+  if(d<today)return{label:d,cls:'overdue'};
+  return{label:d,cls:''};
+}
+function subProgress(t){
+  if(!t.subtasks||!t.subtasks.length)return null;
+  const done=t.subtasks.filter(s=>s.done).length;
+  return`${done}/${t.subtasks.length}`;
+}
+function pLabel(p){ return {high:'High',med:'Medium',low:'Low'}[p]||p; }
+
+// ══════════════════════════════════════
+// CATEGORY HELPERS
+// ══════════════════════════════════════
+function populateCatSelects(){
+  // sidebar cat filter (keep for backward compat, now hidden but still used by hdr)
+  const cf=document.getElementById('cat-filter');
+  if(cf){
+    cf.innerHTML='<option value="all">All categories</option>';
+    categories.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; cf.appendChild(o); });
+  }
+  // form select
+  const fs=document.getElementById('f-cat');
+  if(fs){
+    const prev=fs.value;
+    fs.innerHTML='';
+    categories.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; fs.appendChild(o); });
+    if(categories.includes(prev)) fs.value=prev;
+  }
+  // column header filter
+  populateHdrCatFilter();
+}
+
+function addCategory(name){
+  name=name.trim();
+  if(!name)return false;
+  if(categories.map(c=>c.toLowerCase()).includes(name.toLowerCase())){ toast('Category already exists'); return false; }
+  categories.push(name);
+  saveCats();
+  populateCatSelects();
+  renderCatTable();
+  return true;
+}
+
+function deleteCategory(name){
+  if(BUILT_IN.includes(name)){ toast('Built-in categories cannot be deleted'); return; }
+  const inUse=tasks.some(t=>t.cat===name);
+  if(inUse){ toast(`"${name}" is used by existing tasks — reassign them first`); return; }
+  confirm(`Delete "${name}"?`, 'This category will be permanently removed.', ()=>{
+    categories=categories.filter(c=>c!==name);
+    saveCats(); populateCatSelects(); renderCatTable();
+    toast(`Category "${name}" deleted`);
+  });
+}
+
+function renderCatTable(){
+  const tb=document.getElementById('cat-table-body');
+  tb.innerHTML=categories.map(c=>{
+    const count=tasks.filter(t=>t.cat===c).length;
+    const isBuiltIn=BUILT_IN.includes(c);
+    return`<tr>
+      <td><strong>${esc(c)}</strong></td>
+      <td>${count}</td>
+      <td>${isBuiltIn?'<span class="cat-built-in">Built-in</span>':'Custom'}</td>
+      <td><button class="btn-del-cat" data-cat="${esc(c)}" ${isBuiltIn?'disabled title="Cannot delete built-in category"':''}>🗑 Remove</button></td>
+    </tr>`;
+  }).join('');
+  tb.querySelectorAll('[data-cat]').forEach(btn=>{
+    if(!btn.disabled) btn.addEventListener('click',()=>deleteCategory(btn.dataset.cat));
+  });
+}
+
+// ══════════════════════════════════════
+// TASK HTML
+// ══════════════════════════════════════
+function taskHTML(t){
+  const df=formatDate(t.due), sp=subProgress(t);
+  const hasNotes=t.notes&&t.notes.trim();
+  const attachCount=(t.attachments||[]).length;
+  const subHTML=(t.subtasks||[]).map((s,si)=>{
+    const sdf=formatDate(s.due);
+    return`<div class="subtask-item">
+      <div class="subtask-top">
+        <div class="subtask-check ${s.done?'done':''}" data-stid="${t.id}" data-si="${si}"><span class="subtask-check-icon">✓</span></div>
+        <span class="subtask-text">${esc(s.text)}</span>
+        <button class="subtask-del" data-stid="${t.id}" data-si="${si}">✕</button>
+      </div>
+      <div class="subtask-meta">
+        <span class="badge badge-${s.priority||'med'}">${pLabel(s.priority||'med')}</span>
+        ${sdf?`<span class="due-date ${sdf.cls}">${sdf.label}</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const attHTML=buildAttachHTML(t);
+
+  return`<div class="task-card ${t.done?'done':''}" data-id="${t.id}">
+    <div class="task-main">
+      <div class="task-check" data-check="${t.id}"><span class="task-check-icon">✓</span></div>
+      <div class="task-body">
+        <div class="task-title">${esc(t.title)}</div>
+        <div class="task-meta">
+          <span class="badge badge-${t.priority}">${pLabel(t.priority)}</span>
+          <span class="badge badge-cat">${esc(t.cat)}</span>
+          ${df?`<span class="due-date ${df.cls}">${df.label}</span>`:''}
+          ${sp?`<span class="subtask-count">📋 ${sp} subtasks</span>`:''}
+          ${attachCount?`<span class="attach-count">📎 ${attachCount}</span>`:''}
+        </div>
+      </div>
+      <div class="task-actions">
+        <button class="icon-btn" data-edit="${t.id}" title="Edit task">✏️</button>
+        <button class="icon-btn delete" data-del="${t.id}" title="Delete task">🗑</button>
+        <button class="expand-btn ${t.expanded?'open':''}" data-exp="${t.id}">▾</button>
+      </div>
+    </div>
+    <div class="task-expanded ${t.expanded?'open':''}">
+      <!-- Notes -->
+      <div class="expand-section">
+        <div class="expand-label">Notes</div>
+        ${hasNotes?`<div class="notes-display" data-notes-click="${t.id}">${esc(t.notes)}</div>`
+                  :`<div class="notes-placeholder" data-notes-click="${t.id}">Click to add notes…</div>`}
+        <textarea class="notes-edit" id="notes-edit-${t.id}" data-tid="${t.id}">${esc(t.notes||'')}</textarea>
+        <div class="notes-footer" id="notes-footer-${t.id}">
+          <button class="screenshot-btn" data-ss="${t.id}" style="font-size:12px;padding:5px 10px">📷 Screenshot</button>
+          <div class="spacer"></div>
+          <button class="btn-xs" data-notes-cancel="${t.id}">Cancel</button>
+          <button class="btn-xs confirm" data-notes-save="${t.id}">Save</button>
+        </div>
+      </div>
+      <!-- Attachments -->
+      <div class="expand-section">
+        <div class="expand-label">Attachments</div>
+        <div class="attach-grid" id="attach-grid-${t.id}">${attHTML}</div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <label class="btn-open-sub-form" style="cursor:pointer">
+            📎 Attach file
+            <input type="file" class="task-attach-input" data-tid="${t.id}" multiple style="display:none">
+          </label>
+        </div>
+      </div>
+      <!-- Subtasks -->
+      <div class="expand-section">
+        <div class="expand-label">Subtasks</div>
+        <div class="subtask-list" id="subtask-list-${t.id}">${subHTML}</div>
+        <button class="btn-open-sub-form" data-open-sub="${t.id}">＋ Add subtask</button>
+        <div class="add-subtask-form" id="sub-form-${t.id}">
+          <div class="add-sub-row">
+            <input class="sub-form-input sub-title" id="sub-title-${t.id}" placeholder="Subtask title…">
+            <select class="sub-form-input" id="sub-pri-${t.id}">
+              <option value="med">Medium</option>
+              <option value="high">High</option>
+              <option value="low">Low</option>
+            </select>
+            <input class="sub-form-input" type="date" id="sub-due-${t.id}">
+          </div>
+          <div class="add-sub-actions">
+            <button class="btn-xs" data-close-sub="${t.id}">Cancel</button>
+            <button class="btn-xs confirm" data-save-sub="${t.id}">Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function buildAttachHTML(t){
+  if(!(t.attachments&&t.attachments.length))return'';
+  return(t.attachments||[]).map((a,ai)=>{
+    if(a.isImage){
+      return`<div class="attach-thumb" data-lb="${esc(a.data)}" data-tid="${t.id}" data-ai="${ai}">
+        <img src="${a.data}" alt="${esc(a.name)}">
+        <div class="attach-label">${esc(a.name)}</div>
+        <button class="attach-remove" data-tid="${t.id}" data-ai="${ai}">✕</button>
+      </div>`;
+    }
+    return`<div class="attach-file-chip" data-tid="${t.id}" data-ai="${ai}">
+      📄 <span>${esc(a.name)}</span>
+      <button class="del-f" data-tid="${t.id}" data-ai="${ai}">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function attachCardHandlers(){
+  // edit
+  document.querySelectorAll('[data-edit]').forEach(el=>{
+    el.addEventListener('click',e=>{ e.stopPropagation(); openEditModal(el.dataset.edit); });
+  });
+  // complete
+  document.querySelectorAll('[data-check]').forEach(el=>{
+    el.addEventListener('click',e=>{ e.stopPropagation();
+      const t=tasks.find(x=>x.id===el.dataset.check); if(t){t.done=!t.done;saveTasks();render();}
+    });
+  });
+  // delete
+  document.querySelectorAll('[data-del]').forEach(el=>{
+    el.addEventListener('click',e=>{ e.stopPropagation();
+      const id=el.dataset.del;
+      confirm('Delete task?','This cannot be undone.',()=>{
+        tasks=tasks.filter(x=>x.id!==id); saveTasks(); render();
+      });
+    });
+  });
+  // expand
+  document.querySelectorAll('[data-exp]').forEach(el=>{
+    el.addEventListener('click',e=>{ e.stopPropagation();
+      const t=tasks.find(x=>x.id===el.dataset.exp); if(t){t.expanded=!t.expanded;saveTasks();render();}
+    });
+  });
+  // notes click
+  document.querySelectorAll('[data-notes-click]').forEach(el=>{
+    el.addEventListener('click',()=>showNotesEdit(el.dataset.notesClick));
+  });
+  // notes save
+  document.querySelectorAll('[data-notes-save]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const id=el.dataset.notesSave;
+      const t=tasks.find(x=>x.id===id); if(!t)return;
+      t.notes=document.getElementById(`notes-edit-${id}`).value;
+      saveTasks(); render();
+    });
+  });
+  // notes cancel
+  document.querySelectorAll('[data-notes-cancel]').forEach(el=>{
+    el.addEventListener('click',()=>render());
+  });
+  // screenshot in card
+  document.querySelectorAll('[data-ss]').forEach(el=>{
+    el.addEventListener('click',()=>captureScreenshot(el.dataset.ss));
+  });
+  // subtask check
+  document.querySelectorAll('[data-stid][data-si].subtask-check').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const t=tasks.find(x=>x.id===el.dataset.stid);
+      if(t&&t.subtasks[+el.dataset.si]){t.subtasks[+el.dataset.si].done=!t.subtasks[+el.dataset.si].done;saveTasks();render();}
+    });
+  });
+  // subtask del
+  document.querySelectorAll('.subtask-del').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const t=tasks.find(x=>x.id===el.dataset.stid);
+      if(t){t.subtasks.splice(+el.dataset.si,1);saveTasks();render();}
+    });
+  });
+  // open sub form
+  document.querySelectorAll('[data-open-sub]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const id=el.dataset.openSub;
+      const f=document.getElementById(`sub-form-${id}`);
+      f.classList.toggle('open');
+      if(f.classList.contains('open')) document.getElementById(`sub-title-${id}`).focus();
+    });
+  });
+  document.querySelectorAll('[data-close-sub]').forEach(el=>{
+    el.addEventListener('click',()=>{ document.getElementById(`sub-form-${el.dataset.closeSub}`).classList.remove('open'); });
+  });
+  document.querySelectorAll('[data-save-sub]').forEach(el=>{
+    el.addEventListener('click',()=>addSubtask(el.dataset.saveSub));
+  });
+  document.querySelectorAll('.sub-form-input.sub-title').forEach(el=>{
+    el.addEventListener('keydown',e=>{ if(e.key==='Enter') addSubtask(el.id.replace('sub-title-','')); });
+  });
+  // attach file in card
+  document.querySelectorAll('.task-attach-input').forEach(el=>{
+    el.addEventListener('change',()=>handleTaskAttach(el.dataset.tid, el.files));
+  });
+  // attach remove
+  document.querySelectorAll('.attach-remove, .del-f').forEach(el=>{
+    el.addEventListener('click',e=>{
+      e.stopPropagation();
+      const t=tasks.find(x=>x.id===el.dataset.tid);
+      if(t){t.attachments.splice(+el.dataset.ai,1);saveTasks();render();}
+    });
+  });
+  // lightbox
+  document.querySelectorAll('[data-lb]').forEach(el=>{
+    el.addEventListener('click',e=>{
+      if(e.target.classList.contains('attach-remove'))return;
+      document.getElementById('lightbox-img').src=el.dataset.lb;
+      document.getElementById('lightbox').classList.add('open');
+    });
+  });
+}
+
+function showNotesEdit(id){
+  const edit=document.getElementById(`notes-edit-${id}`);
+  const footer=document.getElementById(`notes-footer-${id}`);
+  edit.style.display='block'; edit.focus();
+  footer.classList.add('vis');
+}
+
+function addSubtask(tid){
+  const title=document.getElementById(`sub-title-${tid}`).value.trim();
+  if(!title)return;
+  const t=tasks.find(x=>x.id===tid); if(!t)return;
+  if(!t.subtasks)t.subtasks=[];
+  t.subtasks.push({
+    id:uid(), text:title,
+    priority:document.getElementById(`sub-pri-${tid}`).value,
+    due:document.getElementById(`sub-due-${tid}`).value||null,
+    done:false
+  });
+  saveTasks(); render();
+}
+
+// ══════════════════════════════════════
+// ATTACHMENTS
+// ══════════════════════════════════════
+function fileToBase64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result);
+    r.onerror=()=>rej(new Error('Read failed'));
+    r.readAsDataURL(file);
+  });
+}
+
+async function handleTaskAttach(tid, files){
+  const t=tasks.find(x=>x.id===tid); if(!t)return;
+  if(!t.attachments)t.attachments=[];
+  for(const file of files){
+    try{
+      const data=await fileToBase64(file);
+      t.attachments.push({id:uid(),name:file.name,type:file.type,data,isImage:file.type.startsWith('image/')});
+    }catch(e){toast('Failed to attach: '+file.name);}
+  }
+  saveTasks(); render();
+}
+
+async function handleFormAttach(files){
+  for(const file of files){
+    try{
+      const data=await fileToBase64(file);
+      formAttachments.push({id:uid(),name:file.name,type:file.type,data,isImage:file.type.startsWith('image/')});
+    }catch(e){toast('Failed to attach: '+file.name);}
+  }
+  renderFormAttachments();
+}
+
+function renderFormAttachments(){
+  const el=document.getElementById('form-attachments');
+  el.innerHTML=formAttachments.map((a,i)=>`
+    <div class="attach-chip">
+      <span>${esc(a.name)}</span>
+      <button data-fi="${i}" title="Remove">✕</button>
+    </div>`).join('');
+  el.querySelectorAll('[data-fi]').forEach(btn=>{
+    btn.addEventListener('click',()=>{ formAttachments.splice(+btn.dataset.fi,1); renderFormAttachments(); });
+  });
+}
+
+// ══════════════════════════════════════
+// SCREENSHOT
+// ══════════════════════════════════════
+async function captureScreenshot(tid){
+  try{
+    const stream=await navigator.mediaDevices.getDisplayMedia({video:{cursor:'always'},audio:false});
+    const video=document.createElement('video');
+    video.srcObject=stream; video.play();
+    await new Promise(r=>video.onloadedmetadata=r);
+    const canvas=document.createElement('canvas');
+    canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+    canvas.getContext('2d').drawImage(video,0,0);
+    stream.getTracks().forEach(t=>t.stop());
+    const dataUrl=canvas.toDataURL('image/png');
+    const name=`screenshot-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.png`;
+
+    if(tid==='form'){
+      formAttachments.push({id:uid(),name,type:'image/png',data:dataUrl,isImage:true});
+      renderFormAttachments();
+    } else {
+      const t=tasks.find(x=>x.id===tid); if(!t)return;
+      if(!t.attachments)t.attachments=[];
+      t.attachments.push({id:uid(),name,type:'image/png',data:dataUrl,isImage:true});
+      saveTasks(); render();
+    }
+    toast('Screenshot captured');
+  }catch(e){
+    if(e.name!=='NotAllowedError') toast('Screenshot failed: '+e.message);
+  }
+}
+
+// ══════════════════════════════════════
+// ADD TASK FORM
+// ══════════════════════════════════════
+document.getElementById('btn-add-task').addEventListener('click',()=>{
+  const form=document.getElementById('add-form');
+  form.classList.toggle('open');
+  if(form.classList.contains('open')) document.getElementById('f-title').focus();
+});
+
+document.getElementById('btn-cancel').addEventListener('click',()=>{
+  document.getElementById('add-form').classList.remove('open');
+  clearForm();
+});
+
+document.getElementById('btn-save').addEventListener('click',saveTask);
+document.getElementById('f-title').addEventListener('keydown',e=>{ if(e.key==='Enter')saveTask(); if(e.key==='Escape')document.getElementById('btn-cancel').click(); });
+
+function saveTask(){
+  const title=document.getElementById('f-title').value.trim();
+  if(!title){ document.getElementById('f-title').focus(); return; }
+  const task={
+    id:uid(), title,
+    priority:document.getElementById('f-priority').value,
+    cat:document.getElementById('f-cat').value,
+    due:document.getElementById('f-due').value||null,
+    notes:document.getElementById('f-notes').value.trim(),
+    subtasks:[], done:false, expanded:false,
+    created:Date.now(),
+    attachments:[...formAttachments]
+  };
+  tasks.unshift(task);
+  saveTasks(); clearForm();
+  document.getElementById('add-form').classList.remove('open');
+  render(); renderCatTable();
+  toast('Task added');
+}
+
+function clearForm(){
+  document.getElementById('f-title').value='';
+  document.getElementById('f-priority').value='med';
+  document.getElementById('f-due').value='';
+  document.getElementById('f-notes').value='';
+  formAttachments=[];
+  document.getElementById('form-attachments').innerHTML='';
+  document.getElementById('form-screenshots').innerHTML='';
+}
+
+// Inline new category in form
+document.getElementById('btn-inline-new-cat').addEventListener('click',()=>{
+  document.getElementById('new-cat-inline').classList.add('open');
+  document.getElementById('new-cat-name').focus();
+});
+document.getElementById('btn-cancel-cat').addEventListener('click',()=>{
+  document.getElementById('new-cat-inline').classList.remove('open');
+  document.getElementById('new-cat-name').value='';
+});
+document.getElementById('btn-confirm-cat').addEventListener('click',()=>{
+  const name=document.getElementById('new-cat-name').value.trim();
+  if(addCategory(name)){
+    document.getElementById('f-cat').value=name;
+    document.getElementById('new-cat-inline').classList.remove('open');
+    document.getElementById('new-cat-name').value='';
+    toast(`Category "${name}" added`);
+  }
+});
+document.getElementById('new-cat-name').addEventListener('keydown',e=>{ if(e.key==='Enter')document.getElementById('btn-confirm-cat').click(); });
+
+// Form file attach
+document.getElementById('f-attach-file').addEventListener('change',e=>handleFormAttach(e.target.files));
+document.getElementById('btn-screenshot-form').addEventListener('click',()=>captureScreenshot('form'));
+
+// ══════════════════════════════════════
+// STATUS FILTER (All / Active / Done)
+// ══════════════════════════════════════
+document.querySelectorAll('.filter-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    filterStatus=btn.dataset.filter; render();
+  });
+});
+
+// ══════════════════════════════════════
+// COLUMN HEADER SORT & FILTER
+// ══════════════════════════════════════
+function setSort(field) {
+  if (sortField === field) {
+    sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortField = field;
+    sortDir = 'asc';
+  }
+  render();
+}
+
+// Sort on header label click (title, due)
+document.getElementById('hdr-title').addEventListener('click', () => setSort('title'));
+document.getElementById('hdr-due').addEventListener('click', e => {
+  if (e.target.dataset.dateToggle) return; // don't sort when clicking calendar icon
+  setSort('due');
+});
+
+// Sort arrows for priority and category (inline spans)
+document.getElementById('arr-priority').addEventListener('click', () => setSort('priority'));
+document.getElementById('arr-cat').addEventListener('click', () => setSort('cat'));
+
+// Priority filter dropdown in header
+document.getElementById('hdr-priority-filter').addEventListener('change', e => {
+  colFilterPriority = e.target.value; render();
+});
+// prevent sort trigger when clicking the select itself
+document.getElementById('hdr-priority-filter').addEventListener('click', e => e.stopPropagation());
+
+// Category filter dropdown in header
+document.getElementById('hdr-cat-filter').addEventListener('change', e => {
+  colFilterCat = e.target.value; render();
+});
+document.getElementById('hdr-cat-filter').addEventListener('click', e => e.stopPropagation());
+
+// Date range toggle
+document.getElementById('hdr-due-filter-icon').addEventListener('click', e => {
+  e.stopPropagation();
+  document.getElementById('date-filter-row').classList.toggle('open');
+});
+document.getElementById('due-from').addEventListener('change', e => { colDueFrom = e.target.value; render(); });
+document.getElementById('due-to').addEventListener('change', e => { colDueTo = e.target.value; render(); });
+document.getElementById('btn-clear-date').addEventListener('click', () => {
+  colDueFrom = ''; colDueTo = '';
+  document.getElementById('due-from').value = '';
+  document.getElementById('due-to').value = '';
+  render();
+});
+
+// Reset all column sort + filters
+document.getElementById('btn-reset-sort').addEventListener('click', () => {
+  sortField = null; sortDir = 'asc';
+  colFilterPriority = 'all'; colFilterCat = 'all';
+  colDueFrom = ''; colDueTo = '';
+  document.getElementById('hdr-priority-filter').value = 'all';
+  document.getElementById('hdr-cat-filter').value = 'all';
+  document.getElementById('due-from').value = '';
+  document.getElementById('due-to').value = '';
+  document.getElementById('date-filter-row').classList.remove('open');
+  render();
+  toast('Sorting and filters reset');
+});
+
+// ══════════════════════════════════════
+// TABS
+// ══════════════════════════════════════
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab==='categories') renderCatTable();
+  });
+});
+
+// ══════════════════════════════════════
+// CATEGORIES TAB
+// ══════════════════════════════════════
+document.getElementById('btn-add-cat-manage').addEventListener('click',()=>{
+  const name=document.getElementById('new-cat-manage').value.trim();
+  if(addCategory(name)){ document.getElementById('new-cat-manage').value=''; toast(`Category "${name}" added`); }
+});
+document.getElementById('new-cat-manage').addEventListener('keydown',e=>{ if(e.key==='Enter')document.getElementById('btn-add-cat-manage').click(); });
+
+// ══════════════════════════════════════
+// LIGHTBOX
+// ══════════════════════════════════════
+document.getElementById('lightbox').addEventListener('click',()=>document.getElementById('lightbox').classList.remove('open'));
+
+// ══════════════════════════════════════
+// EXCEL IMPORT
+// ══════════════════════════════════════
+document.getElementById('btn-dl-template').addEventListener('click',downloadTemplate);
+
+function downloadTemplate(){
+  const wb=XLSX.utils.book_new();
+  const header=['Title','Priority (high/med/low)','Category','Due Date (YYYY-MM-DD)','Notes'];
+  const example=[
+    ['Review contract batch 7','high','SCB','2026-09-01','Check attachments in Ariba'],
+    ['Update project status deck','med','Internal','2026-09-05','For Monday governance call'],
+    ['Submit expenses','low','Admin','','Q2 receipts']
+  ];
+  const ws=XLSX.utils.aoa_to_sheet([header,...example]);
+  ws['!cols']=[{wch:30},{wch:22},{wch:14},{wch:20},{wch:40}];
+  XLSX.utils.book_append_sheet(wb,ws,'Tasks');
+  XLSX.writeFile(wb,'task-tracker-template.xlsx');
+  toast('Template downloaded');
+}
+
+document.getElementById('excel-upload').addEventListener('change',e=>parseExcel(e.target.files[0]));
+
+const dropZone=document.getElementById('excel-drop');
+dropZone.addEventListener('dragover',e=>{ e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop',e=>{ e.preventDefault(); dropZone.classList.remove('drag'); parseExcel(e.dataTransfer.files[0]); });
+
+function parseExcel(file){
+  if(!file)return;
+  const res=document.getElementById('excel-result');
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1});
+      if(rows.length<2){ showResult(res,'No data rows found in the file.','err'); return; }
+      let created=0, skipped=0;
+      rows.slice(1).forEach(row=>{
+        const title=(row[0]||'').toString().trim();
+        if(!title){skipped++;return;}
+        const rawPri=(row[1]||'med').toString().toLowerCase().trim();
+        const pri=['high','med','low'].includes(rawPri)?rawPri:'med';
+        const rawCat=(row[2]||categories[0]).toString().trim();
+        const cat=categories.includes(rawCat)?rawCat:(addCategory(rawCat)||rawCat);
+        const due=(row[3]||'').toString().trim();
+        const notes=(row[4]||'').toString().trim();
+        tasks.unshift({id:uid(),title,priority:pri,cat,due:due||null,notes,subtasks:[],done:false,expanded:false,created:Date.now(),attachments:[]});
+        created++;
+      });
+      saveTasks(); render(); renderCatTable();
+      showResult(res,`✓ Created ${created} task${created!==1?'s':''}${skipped?` · ${skipped} skipped (no title)`:''}.`,'ok');
+      toast(`${created} tasks imported`);
+    }catch(err){
+      showResult(res,'Could not parse file: '+err.message,'err');
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+// ══════════════════════════════════════
+// EMAIL IMPORT
+// ══════════════════════════════════════
+document.getElementById('btn-copy-email').addEventListener('click',()=>{
+  navigator.clipboard.writeText('tasks+import@mytasktracker.io').then(()=>toast('Email address copied'));
+});
+
+document.getElementById('btn-parse-email').addEventListener('click',()=>{
+  const text=document.getElementById('email-paste').value.trim();
+  const res=document.getElementById('email-result');
+  if(!text){ showResult(res,'Please paste email content first.','err'); return; }
+  try{
+    const task=parseEmailToTask(text);
+    tasks.unshift(task); saveTasks(); render(); renderCatTable();
+    document.getElementById('email-paste').value='';
+    showResult(res,`✓ Task "${task.title}" created with ${task.subtasks.length} subtask${task.subtasks.length!==1?'s':''}.`,'ok');
+    toast('Task created from email');
+  }catch(e){
+    showResult(res,'Could not parse email: '+e.message,'err');
+  }
+});
+
+function parseEmailToTask(text){
+  const lines=text.split(/\r?\n/).map(l=>l.trim());
+  const get=(key)=>{
+    const line=lines.find(l=>l.toUpperCase().startsWith(key+':'));
+    return line?line.slice(key.length+1).trim():'';
+  };
+
+  // Try subject line for title fallback
+  let title=get('TITLE');
+  if(!title){
+    const subj=lines.find(l=>/^subject:/i.test(l));
+    if(subj) title=subj.replace(/^subject:\s*/i,'').replace(/^TASK:\s*/i,'').trim();
+  }
+  if(!title) throw new Error('No TITLE field found. Add "TITLE: Your task title" to the email.');
+
+  const rawPri=(get('PRIORITY')||'med').toLowerCase().trim();
+  const priority=['high','med','medium','low'].includes(rawPri)?(rawPri==='medium'?'med':rawPri):'med';
+  const rawCat=get('CATEGORY')||categories[0];
+  const cat=categories.includes(rawCat)?rawCat:rawCat;
+  if(!categories.includes(cat) && cat) addCategory(cat);
+
+  const due=get('DUE')||null;
+  const notes=get('NOTES')||'';
+
+  const subtasks=lines.filter(l=>l.toUpperCase().startsWith('SUBTASK:')).map(l=>{
+    const parts=l.slice(8).split('|').map(p=>p.trim());
+    const rawSP=(parts[1]||'med').toLowerCase();
+    const sp=['high','med','medium','low'].includes(rawSP)?(rawSP==='medium'?'med':rawSP):'med';
+    return{id:uid(),text:parts[0],priority:sp,due:parts[2]||null,done:false};
+  });
+
+  return{id:uid(),title,priority,cat,due,notes,subtasks,done:false,expanded:false,created:Date.now(),attachments:[]};
+}
+
+function showResult(el, msg, type){
+  el.textContent=msg; el.className='import-result '+type;
+}
+
+// ══════════════════════════════════════
+// EDIT MODAL
+// ══════════════════════════════════════
+function populateEditCatSelect(selected){
+  const sel=document.getElementById('edit-cat');
+  sel.innerHTML='';
+  categories.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o); });
+  if(selected && categories.includes(selected)) sel.value=selected;
+}
+
+function openEditModal(id){
+  const t=tasks.find(x=>x.id===id); if(!t)return;
+  document.getElementById('edit-task-id').value=id;
+  document.getElementById('edit-title').value=t.title||'';
+  document.getElementById('edit-priority').value=t.priority||'med';
+  document.getElementById('edit-due').value=t.due||'';
+  document.getElementById('edit-notes').value=t.notes||'';
+  populateEditCatSelect(t.cat);
+  const created=new Date(t.created).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  document.getElementById('edit-modal-created').textContent='Created '+created;
+  // reset inline cat
+  document.getElementById('edit-new-cat-inline').classList.remove('open');
+  document.getElementById('edit-new-cat-name').value='';
+  document.getElementById('edit-modal').classList.add('open');
+  document.getElementById('edit-title').focus();
+}
+
+function closeEditModal(){
+  document.getElementById('edit-modal').classList.remove('open');
+}
+
+document.getElementById('edit-modal-cancel').addEventListener('click', closeEditModal);
+document.getElementById('edit-modal').addEventListener('click', e=>{ if(e.target===document.getElementById('edit-modal')) closeEditModal(); });
+
+document.getElementById('edit-modal-save').addEventListener('click',()=>{
+  const id=document.getElementById('edit-task-id').value;
+  const t=tasks.find(x=>x.id===id); if(!t)return;
+  const title=document.getElementById('edit-title').value.trim();
+  if(!title){ document.getElementById('edit-title').focus(); return; }
+  t.title=title;
+  t.priority=document.getElementById('edit-priority').value;
+  t.cat=document.getElementById('edit-cat').value;
+  t.due=document.getElementById('edit-due').value||null;
+  t.notes=document.getElementById('edit-notes').value.trim();
+  t.updated=Date.now();
+  saveTasks(); render(); renderCatTable();
+  closeEditModal();
+  toast('Task updated');
+});
+
+document.getElementById('edit-title').addEventListener('keydown',e=>{ if(e.key==='Escape') closeEditModal(); });
+
+// Inline new category inside edit modal
+document.getElementById('edit-btn-new-cat').addEventListener('click',()=>{
+  document.getElementById('edit-new-cat-inline').classList.add('open');
+  document.getElementById('edit-new-cat-name').focus();
+});
+document.getElementById('edit-btn-cancel-cat').addEventListener('click',()=>{
+  document.getElementById('edit-new-cat-inline').classList.remove('open');
+  document.getElementById('edit-new-cat-name').value='';
+});
+document.getElementById('edit-btn-confirm-cat').addEventListener('click',()=>{
+  const name=document.getElementById('edit-new-cat-name').value.trim();
+  if(addCategory(name)){
+    populateEditCatSelect(name);
+    document.getElementById('edit-cat').value=name;
+    document.getElementById('edit-new-cat-inline').classList.remove('open');
+    document.getElementById('edit-new-cat-name').value='';
+    toast(`Category "${name}" added`);
+  }
+});
+document.getElementById('edit-new-cat-name').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('edit-btn-confirm-cat').click(); });
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+populateCatSelects();
+render();
+</script>
+</body>
+</html>
