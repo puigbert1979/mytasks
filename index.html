@@ -97,6 +97,38 @@ select.filter-select:focus{border-color:var(--accent)}
 .btn-save{background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:6px 16px;font-size:13px;font-weight:500;font-family:'Inter',sans-serif;cursor:pointer}
 .btn-save:hover{background:#1d4ed8}
 
+/* ── RECURRENCE PANEL ── */
+.recur-toggle-row{display:flex;align-items:center;gap:10px;padding:10px 0 4px;border-top:1px solid var(--border);margin-top:10px}
+.recur-toggle-label{font-size:13px;color:var(--text-mid);cursor:pointer;display:flex;align-items:center;gap:7px;user-select:none}
+.recur-toggle-label input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.recur-panel{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-top:10px;display:none}
+.recur-panel.open{display:block}
+.recur-pattern-tabs{display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap}
+.recur-tab{background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 13px;font-size:12px;font-family:'Inter',sans-serif;color:var(--text-mid);cursor:pointer;transition:all .15s}
+.recur-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:500}
+.recur-tab:hover:not(.active){background:var(--surface);border-color:var(--border-strong)}
+.recur-section{display:none}.recur-section.active{display:block}
+.recur-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.recur-row:last-child{margin-bottom:0}
+.recur-label{font-size:12px;color:var(--text-mid);white-space:nowrap;min-width:60px}
+.recur-input{font-family:'Inter',sans-serif;font-size:13px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 9px;outline:none;background:#fff;color:var(--text);width:70px}
+.recur-input:focus{border-color:var(--accent)}
+.recur-input.wide{width:140px}
+.recur-select{font-family:'Inter',sans-serif;font-size:13px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 9px;outline:none;background:#fff;color:var(--text);cursor:pointer}
+.recur-select:focus{border-color:var(--accent)}
+/* day-of-week pills */
+.dow-pills{display:flex;gap:5px;flex-wrap:wrap}
+.dow-pill{display:inline-flex;align-items:center;justify-content:center;width:34px;height:30px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;user-select:none;color:var(--text-mid);background:var(--surface)}
+.dow-pill.sel{background:var(--accent);color:#fff;border-color:var(--accent)}
+.dow-pill:hover:not(.sel){background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+/* end-condition */
+.recur-end-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border-strong)}
+.recur-end-option{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-mid);cursor:pointer}
+.recur-end-option input[type=radio]{accent-color:var(--accent);cursor:pointer}
+.recur-preview{font-size:11px;color:var(--accent);background:var(--accent-soft);border-radius:var(--radius-sm);padding:6px 10px;margin-top:10px;font-family:'JetBrains Mono',monospace;line-height:1.6}
+/* recurrence badge on task card */
+.recur-badge{font-size:10px;color:var(--text-muted);display:flex;align-items:center;gap:3px}
+
 /* ── TASK CARD ── */
 #task-list{display:flex;flex-direction:column;gap:8px}
 .empty-state{text-align:center;padding:48px 20px;color:var(--text-muted)}
@@ -358,6 +390,88 @@ select.filter-select:focus{border-color:var(--accent)}
     </div>
     <div id="form-attachments" class="attachment-list"></div>
     <div id="form-screenshots" class="attachment-list"></div>
+
+    <!-- ── RECURRENCE ── -->
+    <div class="recur-toggle-row">
+      <label class="recur-toggle-label">
+        <input type="checkbox" id="f-recur-on"> 🔁 Make this a recurring task
+      </label>
+    </div>
+    <div class="recur-panel" id="recur-panel">
+      <!-- Pattern tabs -->
+      <div class="recur-pattern-tabs">
+        <button class="recur-tab active" data-pat="daily">Daily</button>
+        <button class="recur-tab" data-pat="weekly">Weekly</button>
+        <button class="recur-tab" data-pat="monthly">Monthly</button>
+        <button class="recur-tab" data-pat="custom">Custom days</button>
+      </div>
+
+      <!-- Daily -->
+      <div class="recur-section active" id="recur-daily">
+        <div class="recur-row">
+          <span class="recur-label">Every</span>
+          <input class="recur-input" type="number" id="r-daily-every" value="1" min="1" max="365">
+          <span class="recur-label">day(s)</span>
+        </div>
+      </div>
+
+      <!-- Weekly -->
+      <div class="recur-section" id="recur-weekly">
+        <div class="recur-row">
+          <span class="recur-label">Every</span>
+          <input class="recur-input" type="number" id="r-weekly-every" value="1" min="1" max="52">
+          <span class="recur-label">week(s) on</span>
+        </div>
+        <div class="recur-row">
+          <div class="dow-pills">
+            <span class="dow-pill" data-dow="1">Mo</span>
+            <span class="dow-pill" data-dow="2">Tu</span>
+            <span class="dow-pill" data-dow="3">We</span>
+            <span class="dow-pill" data-dow="4">Th</span>
+            <span class="dow-pill" data-dow="5">Fr</span>
+            <span class="dow-pill" data-dow="6">Sa</span>
+            <span class="dow-pill" data-dow="0">Su</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Monthly -->
+      <div class="recur-section" id="recur-monthly">
+        <div class="recur-row">
+          <span class="recur-label">Every</span>
+          <input class="recur-input" type="number" id="r-monthly-every" value="1" min="1" max="12">
+          <span class="recur-label">month(s) on day</span>
+          <input class="recur-input" type="number" id="r-monthly-day" value="1" min="1" max="31">
+        </div>
+      </div>
+
+      <!-- Custom days -->
+      <div class="recur-section" id="recur-custom">
+        <div class="recur-row">
+          <span class="recur-label">On specific dates (one per line or comma-separated)</span>
+        </div>
+        <div class="recur-row">
+          <textarea class="recur-input wide" id="r-custom-dates" rows="3" style="width:100%;height:70px;resize:vertical" placeholder="2026-09-01&#10;2026-09-15&#10;2026-10-01"></textarea>
+        </div>
+      </div>
+
+      <!-- End condition -->
+      <div class="recur-end-row">
+        <label class="recur-end-option">
+          <input type="radio" name="recur-end" value="count" id="r-end-count" checked> Repeat
+          <input class="recur-input" type="number" id="r-end-count-val" value="5" min="2" max="365" style="width:58px;margin:0 4px">
+          times
+        </label>
+        <label class="recur-end-option">
+          <input type="radio" name="recur-end" value="until" id="r-end-until"> Until
+          <input class="recur-input" type="date" id="r-end-until-val" style="width:auto;margin:0 4px">
+        </label>
+      </div>
+
+      <!-- Live preview -->
+      <div class="recur-preview" id="recur-preview">Select a start date and pattern to preview occurrences.</div>
+    </div>
+
     <div class="form-actions">
       <button class="btn-cancel" id="btn-cancel">Cancel</button>
       <button class="btn-save" id="btn-save">Add task</button>
@@ -793,6 +907,7 @@ function taskHTML(t){
           ${df?`<span class="due-date ${df.cls}">${df.label}</span>`:''}
           ${sp?`<span class="subtask-count">📋 ${sp} subtasks</span>`:''}
           ${attachCount?`<span class="attach-count">📎 ${attachCount}</span>`:''}
+          ${t.recurGroup?`<span class="recur-badge">🔁 ${t.recurLabel||'Recurring'}</span>`:''}
         </div>
       </div>
       <div class="task-actions">
@@ -1087,21 +1202,51 @@ document.getElementById('f-title').addEventListener('keydown',e=>{ if(e.key==='E
 function saveTask(){
   const title=document.getElementById('f-title').value.trim();
   if(!title){ document.getElementById('f-title').focus(); return; }
-  const task={
-    id:uid(), title,
+
+  const base={
     priority:document.getElementById('f-priority').value,
     cat:document.getElementById('f-cat').value,
-    due:document.getElementById('f-due').value||null,
     notes:document.getElementById('f-notes').value.trim(),
     subtasks:[], done:false, expanded:false,
     created:Date.now(),
     attachments:[...formAttachments]
   };
-  tasks.unshift(task);
+
+  const isRecur=document.getElementById('f-recur-on').checked;
+
+  if(!isRecur){
+    tasks.unshift({id:uid(),title,...base,due:document.getElementById('f-due').value||null});
+    saveTasks(); clearForm();
+    document.getElementById('add-form').classList.remove('open');
+    render(); renderCatTable();
+    toast('Task added');
+    return;
+  }
+
+  // ── RECURRING ──
+  const startDate=document.getElementById('f-due').value;
+  if(!startDate){ document.getElementById('f-due').focus(); toast('Set a start date for the recurring task'); return; }
+
+  const dates=generateRecurDates(startDate);
+  if(!dates.length){ toast('No occurrences generated — check your recurrence settings'); return; }
+
+  const recurLabel=buildRecurLabel();
+  const recurGroup=uid(); // shared ID linking all occurrences
+
+  const newTasks=dates.map((due,i)=>({
+    id:uid(), title:`${title}${dates.length>1?` (${i+1}/${dates.length})`:''}`,
+    ...base, due,
+    recurGroup, recurLabel,
+    recurIndex:i+1, recurTotal:dates.length
+  }));
+
+  // Insert newest-first (so they appear in date order in the list)
+  newTasks.reverse().forEach(t=>tasks.unshift(t));
+
   saveTasks(); clearForm();
   document.getElementById('add-form').classList.remove('open');
   render(); renderCatTable();
-  toast('Task added');
+  toast(`${newTasks.length} recurring task${newTasks.length>1?'s':''} created`);
 }
 
 function clearForm(){
@@ -1112,9 +1257,176 @@ function clearForm(){
   formAttachments=[];
   document.getElementById('form-attachments').innerHTML='';
   document.getElementById('form-screenshots').innerHTML='';
+  // reset recurrence
+  document.getElementById('f-recur-on').checked=false;
+  document.getElementById('recur-panel').classList.remove('open');
+  document.getElementById('r-end-count').checked=true;
+  document.getElementById('r-end-count-val').value='5';
+  document.getElementById('r-end-until-val').value='';
+  document.getElementById('r-daily-every').value='1';
+  document.getElementById('r-weekly-every').value='1';
+  document.getElementById('r-monthly-every').value='1';
+  document.getElementById('r-monthly-day').value='1';
+  document.getElementById('r-custom-dates').value='';
+  document.querySelectorAll('.dow-pill').forEach(p=>p.classList.remove('sel'));
+  // reset to daily tab
+  document.querySelectorAll('.recur-tab').forEach(t=>t.classList.toggle('active',t.dataset.pat==='daily'));
+  document.querySelectorAll('.recur-section').forEach(s=>s.classList.toggle('active',s.id==='recur-daily'));
+  updateRecurPreview();
 }
 
+// ══════════════════════════════════════
+// RECURRENCE ENGINE
+// ══════════════════════════════════════
+let recurPattern='daily'; // daily | weekly | monthly | custom
+
+function getRecurEndCondition(){
+  const byCount=document.getElementById('r-end-count').checked;
+  return{
+    type: byCount?'count':'until',
+    count: parseInt(document.getElementById('r-end-count-val').value)||5,
+    until: document.getElementById('r-end-until-val').value||null
+  };
+}
+
+function addDays(dateStr, n){
+  const d=new Date(dateStr+'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate()+n);
+  return d.toISOString().slice(0,10);
+}
+function addMonths(dateStr, n){
+  const d=new Date(dateStr+'T12:00:00Z');
+  d.setUTCMonth(d.getUTCMonth()+n);
+  return d.toISOString().slice(0,10);
+}
+function getDow(dateStr){ return new Date(dateStr+'T12:00:00Z').getUTCDay(); }
+
+function generateRecurDates(startDate){
+  const end=getRecurEndCondition();
+  const MAX=365;
+  const dates=[];
+
+  if(recurPattern==='daily'){
+    const every=parseInt(document.getElementById('r-daily-every').value)||1;
+    let cur=startDate;
+    while(dates.length<MAX){
+      dates.push(cur);
+      if(end.type==='count'&&dates.length>=end.count) break;
+      if(end.type==='until'&&cur>=end.until) break;
+      cur=addDays(cur,every);
+    }
+  }
+  else if(recurPattern==='weekly'){
+    const every=parseInt(document.getElementById('r-weekly-every').value)||1;
+    const selDows=[...document.querySelectorAll('.dow-pill.sel')].map(p=>+p.dataset.dow);
+    if(!selDows.length){ toast('Select at least one day of the week'); return []; }
+    selDows.sort((a,b)=>a-b);
+    let cur=startDate;
+    const endDate=end.type==='until'?end.until:'9999-12-31';
+    let weekStart=startDate;
+    for(let w=0;w<MAX&&dates.length<(end.type==='count'?end.count:MAX);w++){
+      for(const dow of selDows){
+        // find this DOW in the current week
+        const diff=(dow-getDow(weekStart)+7)%7;
+        const cand=addDays(weekStart,diff);
+        if(cand<startDate) continue;
+        if(cand>endDate) break;
+        dates.push(cand);
+        if(end.type==='count'&&dates.length>=end.count) break;
+      }
+      if(end.type==='until'&&weekStart>endDate) break;
+      weekStart=addDays(weekStart,every*7);
+    }
+  }
+  else if(recurPattern==='monthly'){
+    const every=parseInt(document.getElementById('r-monthly-every').value)||1;
+    const day=parseInt(document.getElementById('r-monthly-day').value)||1;
+    let cur=startDate;
+    while(dates.length<MAX){
+      // Set to the nth day of the current month
+      const d=new Date(cur+'T12:00:00Z');
+      d.setUTCDate(Math.min(day,new Date(d.getUTCFullYear(),d.getUTCMonth()+1,0).getDate()));
+      const candidate=d.toISOString().slice(0,10);
+      if(candidate>=startDate){
+        dates.push(candidate);
+        if(end.type==='count'&&dates.length>=end.count) break;
+        if(end.type==='until'&&candidate>=end.until) break;
+      }
+      cur=addMonths(cur,every);
+    }
+  }
+  else if(recurPattern==='custom'){
+    const raw=document.getElementById('r-custom-dates').value;
+    const parsed=raw.split(/[\n,]+/).map(s=>s.trim()).filter(s=>/^\d{4}-\d{2}-\d{2}$/.test(s));
+    if(!parsed.length){ toast('Enter at least one valid date (YYYY-MM-DD)'); return []; }
+    return [...new Set(parsed)].sort();
+  }
+
+  return dates;
+}
+
+function buildRecurLabel(){
+  if(recurPattern==='daily'){
+    const every=document.getElementById('r-daily-every').value;
+    return every==='1'?'Daily':`Every ${every} days`;
+  }
+  if(recurPattern==='weekly'){
+    const every=document.getElementById('r-weekly-every').value;
+    const days=[...document.querySelectorAll('.dow-pill.sel')].map(p=>p.textContent).join(', ');
+    return every==='1'?`Weekly (${days})`:`Every ${every}w (${days})`;
+  }
+  if(recurPattern==='monthly'){
+    const every=document.getElementById('r-monthly-every').value;
+    const day=document.getElementById('r-monthly-day').value;
+    return every==='1'?`Monthly day ${day}`:`Every ${every}m day ${day}`;
+  }
+  if(recurPattern==='custom') return 'Custom dates';
+  return 'Recurring';
+}
+
+function updateRecurPreview(){
+  const prev=document.getElementById('recur-preview');
+  if(!document.getElementById('recur-panel').classList.contains('open')){return;}
+  const start=document.getElementById('f-due').value;
+  if(!start){ prev.textContent='Set a start date above to preview occurrences.'; return; }
+  const dates=generateRecurDates(start);
+  if(!dates||!dates.length){ prev.textContent='No occurrences — check settings.'; return; }
+  const show=dates.slice(0,8);
+  const more=dates.length>8?`\n…and ${dates.length-8} more`:'';
+  prev.textContent=`${dates.length} occurrence${dates.length!==1?'s':''}:\n${show.join('\n')}${more}`;
+}
+
+// ── Recurrence UI events ──
+document.getElementById('f-recur-on').addEventListener('change',function(){
+  document.getElementById('recur-panel').classList.toggle('open',this.checked);
+  updateRecurPreview();
+});
+
+document.querySelectorAll('.recur-tab').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    recurPattern=btn.dataset.pat;
+    document.querySelectorAll('.recur-tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.recur-section').forEach(s=>s.classList.toggle('active',s.id===`recur-${recurPattern}`));
+    updateRecurPreview();
+  });
+});
+
+document.querySelectorAll('.dow-pill').forEach(pill=>{
+  pill.addEventListener('click',()=>{ pill.classList.toggle('sel'); updateRecurPreview(); });
+});
+
+// listen to all recur inputs for live preview
+['r-daily-every','r-weekly-every','r-monthly-every','r-monthly-day','r-end-count-val','r-end-until-val','r-custom-dates'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el) el.addEventListener('input',updateRecurPreview);
+});
+document.querySelectorAll('input[name="recur-end"]').forEach(r=>r.addEventListener('change',updateRecurPreview));
+document.getElementById('f-due').addEventListener('change',updateRecurPreview);
+
+// ══════════════════════════════════════
 // Inline new category in form
+// ══════════════════════════════════════
 document.getElementById('btn-inline-new-cat').addEventListener('click',()=>{
   document.getElementById('new-cat-inline').classList.add('open');
   document.getElementById('new-cat-name').focus();
