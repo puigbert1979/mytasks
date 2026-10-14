@@ -28,9 +28,9 @@
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5}
 
 /* AUTH / SETUP */
-.auth-screen,.setup-screen{display:none;position:fixed;inset:0;background:var(--bg);z-index:9000;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
-.auth-screen.visible,.setup-screen.visible{display:flex}
-.auth-card,.setup-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:36px;width:100%;max-width:420px;box-shadow:var(--shadow-lg)}
+.auth-screen{display:none;position:fixed;inset:0;background:var(--bg);z-index:9000;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+.auth-screen.visible{display:flex}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:36px;width:100%;max-width:420px;box-shadow:var(--shadow-lg)}
 .auth-brand{font-size:22px;font-weight:600;text-align:center;margin-bottom:6px}
 .auth-brand span{color:var(--accent)}
 .auth-subtitle{font-size:13px;color:var(--text-muted);text-align:center;margin-bottom:24px}
@@ -46,17 +46,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .auth-btn:disabled{opacity:.6;cursor:not-allowed}
 .auth-error{font-size:12px;color:var(--high);background:var(--high-soft);border-radius:var(--radius-sm);padding:8px 12px;margin-top:10px;display:none}
 .auth-error.vis{display:block}
-.setup-step{display:flex;gap:14px;margin-bottom:18px;align-items:flex-start}
-.setup-num{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-.setup-step-body{flex:1}
-.setup-step-title{font-size:13px;font-weight:600;margin-bottom:3px}
-.setup-step-desc{font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:7px}
-.setup-field input{width:100%;font-family:'JetBrains Mono',monospace;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;outline:none;background:var(--bg);color:var(--text)}
-.setup-field input:focus{border-color:var(--accent);background:#fff}
-.setup-save-btn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:11px;font-size:14px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;margin-top:18px;transition:background .15s}
-.setup-save-btn:hover{background:var(--accent-dark)}
-.setup-error{font-size:12px;color:var(--high);background:var(--high-soft);border-radius:var(--radius-sm);padding:8px 12px;margin-top:10px;display:none}
-.setup-error.vis{display:block}
+
 
 /* INVITE ACCEPT SCREEN */
 .invite-screen{display:none;position:fixed;inset:0;background:var(--bg);z-index:9500;align-items:center;justify-content:center;padding:20px}
@@ -515,22 +505,6 @@ select.filter-select:focus{border-color:var(--accent)}
 </style>
 </head><body>
 
-<!-- SETUP SCREEN -->
-<div class="setup-screen" id="setup-screen">
-  <div class="setup-card">
-    <h1 style="font-size:18px;font-weight:600;margin-bottom:6px">&#128640; Connect to Supabase</h1>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:22px;line-height:1.6">One-time setup. You need a free Supabase account and to have run <code>setup.sql</code> in the SQL Editor.</p>
-    <div class="setup-step"><div class="setup-num">1</div><div class="setup-step-body"><div class="setup-step-title">Create a Supabase project</div><div class="setup-step-desc">supabase.com &rarr; New project. Wait ~2 min to provision.</div></div></div>
-    <div class="setup-step"><div class="setup-num">2</div><div class="setup-step-body"><div class="setup-step-title">Run setup.sql</div><div class="setup-step-desc">SQL Editor &rarr; New query &rarr; paste setup.sql &rarr; Run.</div></div></div>
-    <div class="setup-step"><div class="setup-num">3</div><div class="setup-step-body"><div class="setup-step-title">Paste your credentials</div><div class="setup-step-desc">Settings &rarr; API &rarr; copy Project URL and anon key.</div>
-      <div class="setup-field" style="margin-bottom:8px"><input type="url" id="setup-url" placeholder="https://xxxxxxxxxxx.supabase.co"></div>
-      <div class="setup-field"><input type="text" id="setup-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI..."></div>
-    </div></div>
-    <div class="setup-error" id="setup-error"></div>
-    <button class="setup-save-btn" id="setup-save-btn">Save &amp; Connect</button>
-  </div>
-</div>
-
 <!-- AUTH SCREEN -->
 <div class="auth-screen" id="auth-screen">
   <div class="auth-card">
@@ -552,7 +526,7 @@ select.filter-select:focus{border-color:var(--accent)}
       <button class="auth-btn" id="signup-btn">Create account</button>
     </div>
     <div class="auth-error" id="auth-error"></div>
-    <div style="text-align:center;margin-top:14px"><button id="auth-reconfigure-btn" style="background:none;border:none;font-size:12px;color:var(--text-muted);cursor:pointer;text-decoration:underline">&#9881; Reconfigure Supabase</button></div>
+
   </div>
 </div>
 
@@ -594,7 +568,7 @@ select.filter-select:focus{border-color:var(--accent)}
       <button class="user-menu-btn" id="user-menu-btn">&#9660;</button>
       <div class="user-dropdown" id="user-dropdown">
         <div class="user-dropdown-item" id="dd-profile">&#128100; Profile</div>
-        <div class="user-dropdown-item" id="dd-settings">&#9881; Reconfigure DB</div>
+
         <div class="user-dropdown-item danger" id="dd-signout">&#8594; Sign out</div>
       </div>
     </div>
@@ -966,10 +940,14 @@ NOTES: Check SAP Ariba</div>
 <div class="toast" id="toast"></div>
 <script>
 'use strict';
-/* ══ CONFIG ══ */
-const CFG_KEY='tt_supabase_cfg';
-const getConfig=()=>{try{return JSON.parse(localStorage.getItem(CFG_KEY));}catch{return null;}};
-const saveConfig=(url,key)=>localStorage.setItem(CFG_KEY,JSON.stringify({url,key}));
+/* ══════════════════════════════════════════════════════
+   CONFIGURATION — Edit these two lines, then upload to GitHub.
+   Users will never see these; they just see the login screen.
+   Get them from: Supabase → Settings → API
+══════════════════════════════════════════════════════ */
+const SUPABASE_URL = 'https://cdwdwizqbfwvizdbbyoh.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNkd2R3aXpxYmZ3dml6ZGJieW9oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzNTAwNjMsImV4cCI6MjEwNjkyNjA2M30.7z7tEb-HmltPLy5F3KEcVzVPrRJnJ6Y7tFrJ2Ij3HwM';
+/* ══════════════════════════════════════════════════════ */
 
 /* ══ STATE ══ */
 let sb=null, currentUser=null, profiles={}, tasks=[], categories=[], projects=[], projectMembers=[], notes=[];
@@ -1017,22 +995,10 @@ function showLoading(msg='Loading…'){document.getElementById('loading-text').t
 function hideLoading(){document.getElementById('loading-overlay').classList.remove('visible');}
 function showResult(el,msg,type){el.textContent=msg;el.className='import-result '+type;}
 
-/* ══ SETUP SCREEN ══ */
-function showSetup(){document.getElementById('setup-screen').classList.add('visible');document.getElementById('auth-screen').classList.remove('visible');document.getElementById('app-shell').style.display='none';}
-document.getElementById('setup-save-btn').addEventListener('click',async()=>{
-  const url=document.getElementById('setup-url').value.trim().replace(/\/+$/,'');
-  const key=document.getElementById('setup-key').value.trim();
-  const err=document.getElementById('setup-error');
-  err.classList.remove('vis');
-  if(!url||!key){err.textContent='Please fill in both fields.';err.classList.add('vis');return;}
-  if(!url.startsWith('https://')){err.textContent='URL must start with https://';err.classList.add('vis');return;}
-  saveConfig(url,key);
-  try{initSupabase(url,key);await sb.auth.getSession();document.getElementById('setup-screen').classList.remove('visible');startAuth();}
-  catch(e){err.textContent='Could not connect: '+e.message;err.classList.add('vis');}
-});
+
 
 /* ══ SUPABASE INIT ══ */
-function initSupabase(url,key){sb=supabase.createClient(url,key);}
+function initSupabase(url,key){sb=supabase.createClient(url||SUPABASE_URL,key||SUPABASE_ANON_KEY);}
 
 /* ══ AUTH ══ */
 function showAuth(){document.getElementById('auth-screen').classList.add('visible');document.getElementById('app-shell').style.display='none';}
@@ -1066,7 +1032,7 @@ document.getElementById('signup-btn').addEventListener('click',async()=>{
 });
 document.getElementById('signin-email').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('signin-btn').click();});
 document.getElementById('signin-password').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('signin-btn').click();});
-document.getElementById('auth-reconfigure-btn').addEventListener('click',showSetup);
+
 
 /* ══ APP INIT ══ */
 async function initApp(user){
@@ -2085,14 +2051,12 @@ document.getElementById('btn-parse-email').addEventListener('click',async()=>{
 document.getElementById('user-menu-btn').addEventListener('click',e=>{e.stopPropagation();document.getElementById('user-dropdown').classList.toggle('open');});
 document.addEventListener('click',e=>{if(!e.target.closest('#user-pill'))document.getElementById('user-dropdown').classList.remove('open');});
 document.getElementById('dd-signout').addEventListener('click',async()=>{await sb.auth.signOut();location.reload();});
-document.getElementById('dd-settings').addEventListener('click',()=>{document.getElementById('user-dropdown').classList.remove('open');showSetup();});
+
 document.getElementById('dd-profile').addEventListener('click',()=>{document.getElementById('user-dropdown').classList.remove('open');toast(`Signed in as: ${ownerName(currentUser?.id)} · ${currentUser?.email}`);});
 
 /* ══ BOOTSTRAP ══ */
 (async()=>{
-  const cfg=getConfig();
-  if(!cfg||!cfg.url||!cfg.key){showSetup();return;}
-  initSupabase(cfg.url,cfg.key);
+  initSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
   sb.auth.onAuthStateChange(async(event,session)=>{
     if(event==='SIGNED_IN'&&session?.user){await initApp(session.user);}
     else if(event==='SIGNED_OUT'||!session){currentUser=null;tasks=[];categories=[...BUILT_IN];projects=[];projectMembers=[];notes=[];document.getElementById('app-shell').style.display='none';showAuth();}
@@ -2100,7 +2064,6 @@ document.getElementById('dd-profile').addEventListener('click',()=>{document.get
   const{data:{session}}=await sb.auth.getSession();
   if(session?.user){await initApp(session.user);}
   else{showAuth();}
-  // Init note input handlers
   setupImageDrop();setupDocDrop();setupAudioRecorder();
 })();
 </script>
