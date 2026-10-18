@@ -143,6 +143,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .task-row.from-note:hover{background:#f5eeff}
 .board-card.from-note{background:#fdf8ff;border-left:3px solid #7c3aed}
 .note-source-tag{font-size:10px;background:#ede9fe;color:#7c3aed;border-radius:99px;padding:1px 7px;font-weight:500;flex-shrink:0;display:inline-flex;align-items:center;gap:3px}
+/* Converted notes */
+.note-card.converted{background:#fdf8ff;border-left:3px solid #7c3aed}
+.note-card.converted:hover{background:#f5eeff;box-shadow:var(--shadow-md)}
+.note-converted-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;background:#ede9fe;color:#7c3aed;border-radius:99px;padding:2px 8px;font-weight:600}
+/* Notes search + filter bar */
+.notes-filter-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.notes-search-wrap{position:relative;flex:1;min-width:180px}
+.notes-search-input{width:100%;font-family:'Inter',sans-serif;font-size:13px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 10px 7px 32px;outline:none;background:var(--surface);color:var(--text);transition:border-color .15s}
+.notes-search-input:focus{border-color:var(--accent);background:#fff}
+.notes-search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text-muted);pointer-events:none}
 .main-content{flex:1;padding:20px 24px;max-width:1200px;margin:0 auto;width:100%}
 
 /* PROJECT SIDEBAR */
@@ -725,13 +735,21 @@ select.filter-select:focus{border-color:var(--accent)}
     <div class="panel" id="view-notes">
       <div class="view-header">
         <div class="view-title">Notes</div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn-primary" id="btn-new-note">&#65291; New note</button>
+        <button class="btn-primary" id="btn-new-note">&#65291; New note</button>
+      </div>
+      <!-- Search + filter bar -->
+      <div class="notes-filter-bar">
+        <div class="notes-search-wrap">
+          <span class="notes-search-icon">&#128269;</span>
+          <input class="notes-search-input" id="notes-search" placeholder="Search notes by title or content&hellip;" type="text">
+        </div>
+        <div class="filter-group">
+          <button class="filter-btn active" data-notes-filter="all">All</button>
+          <button class="filter-btn" data-notes-filter="not-converted">Not converted</button>
+          <button class="filter-btn" data-notes-filter="converted">Converted to task</button>
         </div>
       </div>
-      <div id="notes-list">
-        <div class="empty-state"><div class="emoji">&#128203;</div><p>No notes yet. Create one to get started.</p></div>
-      </div>
+      <div id="notes-list"></div>
     </div>
 
     <!-- MORE VIEW -->
@@ -1569,29 +1587,61 @@ function renderWeekView(){
 }
 
 /* ══ NOTES VIEW ══ */
+let notesFilterStatus='all', notesSearchQuery='';
+
 function renderNotes(){
-  const projectNotes=currentProjectId==='personal'?notes.filter(n=>!n.project_id&&n.created_by===currentUser?.id):notes.filter(n=>n.project_id===currentProjectId);
+  let projectNotes=currentProjectId==='personal'
+    ?notes.filter(n=>!n.project_id&&n.created_by===currentUser?.id)
+    :notes.filter(n=>n.project_id===currentProjectId);
+
+  // Apply search
+  if(notesSearchQuery){
+    const q=notesSearchQuery.toLowerCase();
+    projectNotes=projectNotes.filter(n=>
+      (n.title||'').toLowerCase().includes(q)||
+      (n.content||'').toLowerCase().includes(q)
+    );
+  }
+  // Apply converted filter
+  if(notesFilterStatus==='converted') projectNotes=projectNotes.filter(n=>n.converted);
+  if(notesFilterStatus==='not-converted') projectNotes=projectNotes.filter(n=>!n.converted);
+
   const el=document.getElementById('notes-list');
-  if(!projectNotes.length){el.innerHTML='<div class="empty-state"><div class="emoji">&#128203;</div><p>No notes yet. Create one above.</p></div>';return;}
+  if(!projectNotes.length){
+    const isEmpty=notes.filter(n=>currentProjectId==='personal'?!n.project_id&&n.created_by===currentUser?.id:n.project_id===currentProjectId).length===0;
+    el.innerHTML=`<div class="empty-state"><div class="emoji">&#128203;</div><p>${isEmpty?'No notes yet. Create one above.':'No notes match your search or filter.'}</p></div>`;
+    return;
+  }
+
+  const sourceIcon={'text':'&#9998;','image':'&#128247;','document':'&#128196;','audio':'&#127908;'};
   el.innerHTML='<div class="notes-grid">'+projectNotes.map(n=>{
-    const icon={'text':'&#9998;','image':'&#128247;','document':'&#128196;','audio':'&#127908;'}[n.source_type]||'&#9998;';
+    const icon=sourceIcon[n.source_type]||'&#9998;';
     const preview=n.content?n.content.slice(0,120):'';
     const date=new Date(n.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-    return`<div class="note-card" data-note-id="${n.id}">
+    const isConverted=!!n.converted;
+    return`<div class="note-card${isConverted?' converted':''}" data-note-id="${n.id}">
       <div class="note-card-actions">
         <button class="btn-xs" data-del-note="${n.id}" title="Delete">&#128465;</button>
       </div>
-      <div class="note-card-title">${n.title?esc(n.title):'Untitled note'}</div>
+      <div class="note-card-title">
+        ${n.title?esc(n.title):'Untitled note'}
+        ${isConverted?'<span class="note-converted-badge" style="margin-left:6px">&#10003; Converted</span>':''}
+      </div>
       <div class="note-card-preview">${esc(preview)||'<span style="color:var(--text-muted);font-style:italic">No content</span>'}</div>
       <div class="note-card-footer">
         <span class="note-source-icon">${icon}</span>
         <span>${esc(ownerName(n.created_by))}</span>
         <span style="margin-left:auto">${date}</span>
-        ${isMine(n)?`<button class="btn-xs confirm" style="font-size:10px;padding:2px 7px" data-note-to-task="${n.id}">&#128203; To task</button>`:''}
+        ${isMine(n)&&!isConverted?`<button class="btn-xs confirm" style="font-size:10px;padding:2px 7px" data-note-to-task="${n.id}">&#128203; To task</button>`:''}
+        ${isMine(n)&&isConverted?`<span style="font-size:10px;color:#7c3aed;font-weight:500">&#128203; Task created</span>`:''}
       </div>
     </div>`;
   }).join('')+'</div>';
-  el.querySelectorAll('[data-note-id]').forEach(c=>c.addEventListener('click',e=>{if(e.target.closest('[data-del-note]')||e.target.closest('[data-note-to-task]'))return;openNoteEditor(c.dataset.noteId);}));
+
+  el.querySelectorAll('[data-note-id]').forEach(c=>c.addEventListener('click',e=>{
+    if(e.target.closest('[data-del-note]')||e.target.closest('[data-note-to-task]'))return;
+    openNoteEditor(c.dataset.noteId);
+  }));
   el.querySelectorAll('[data-del-note]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();deleteNote(b.dataset.delNote);}));
   el.querySelectorAll('[data-note-to-task]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();convertNoteToTask(b.dataset.noteToTask);}));
 }
@@ -1616,7 +1666,12 @@ async function convertNoteToTask(noteId){
     project_id:projId,source:'note'  // marks this task as converted from a note
   });
   if(error){toast('Error creating task: '+error.message);return;}
+  // Mark the note as converted
+  await sb.from('notes').update({converted:true}).eq('id',noteId);
+  const ni=notes.findIndex(n=>n.id===noteId);
+  if(ni>=0)notes[ni].converted=true;
   toast('Task created from note');
+  renderNotes();
   switchView('tasks');
 }
 
@@ -1625,6 +1680,15 @@ let currentNoteId=null;
 let mediaRecorder=null,recordChunks=[],recTimerInterval=null,speechRec=null;
 
 document.getElementById('btn-new-note').addEventListener('click',()=>openNoteEditor(null));
+document.getElementById('notes-search').addEventListener('input',e=>{notesSearchQuery=e.target.value.trim();renderNotes();});
+document.querySelectorAll('[data-notes-filter]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('[data-notes-filter]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    notesFilterStatus=btn.dataset.notesFilter;
+    renderNotes();
+  });
+});
 
 function openNoteEditor(id){
   currentNoteId=id;
