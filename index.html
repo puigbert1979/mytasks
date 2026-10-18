@@ -138,6 +138,11 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .due-lbl.today{color:var(--med);font-weight:600}
 .owner-badge{font-size:10px;background:var(--surface2);color:var(--text-muted);border-radius:99px;padding:1px 7px;font-weight:500;flex-shrink:0}
 .owner-badge.mine{background:var(--accent-soft);color:var(--accent)}
+/* Tasks converted from notes */
+.task-row.from-note{background:#fdf8ff;border-left:3px solid #7c3aed}
+.task-row.from-note:hover{background:#f5eeff}
+.board-card.from-note{background:#fdf8ff;border-left:3px solid #7c3aed}
+.note-source-tag{font-size:10px;background:#ede9fe;color:#7c3aed;border-radius:99px;padding:1px 7px;font-weight:500;flex-shrink:0;display:inline-flex;align-items:center;gap:3px}
 .main-content{flex:1;padding:20px 24px;max-width:1200px;margin:0 auto;width:100%}
 
 /* PROJECT SIDEBAR */
@@ -667,6 +672,11 @@ select.filter-select:focus{border-color:var(--accent)}
           <button class="filter-btn active" data-owner="all">Everyone</button>
           <button class="filter-btn" data-owner="mine">Mine</button>
         </div>
+        <div class="filter-group">
+          <button class="filter-btn active" data-source="all">All types</button>
+          <button class="filter-btn" data-source="task">Tasks</button>
+          <button class="filter-btn" data-source="note">From notes</button>
+        </div>
         <select class="filter-select" id="priority-filter"><option value="all">All priorities</option><option value="high">High</option><option value="med">Medium</option><option value="low">Low</option></select>
         <select class="filter-select" id="cat-filter"><option value="all">All categories</option></select>
       </div>
@@ -1121,7 +1131,10 @@ function subscribeRealtime(){
     refreshViews();
   }).on('postgres_changes',{event:'*',schema:'public',table:'notes'},p=>{
     const{eventType:et,new:n,old:o}=p;
-    if(et==='INSERT'){notes.unshift(n);}
+    if(et==='INSERT'){
+      // Only add if not already in local array (avoids double-add when saveNote also pushes)
+      if(!notes.find(x=>x.id===n.id))notes.unshift(n);
+    }
     else if(et==='UPDATE'){const i=notes.findIndex(x=>x.id===n.id);if(i>=0)notes[i]=n;else notes.unshift(n);}
     else if(et==='DELETE'){notes=notes.filter(x=>x.id!==o.id);}
     if(currentView==='notes')renderNotes();
@@ -1377,7 +1390,7 @@ document.querySelectorAll('.sub-tab-btn').forEach(btn=>{
 function refreshViews(){if(currentView==='tasks')renderList();else if(currentView==='board')renderBoard();else if(currentView==='calendar')renderCalendar();}
 
 /* ══ SORT / FILTER STATE ══ */
-let filterStatus='all',filterOwner='all',colFilterPriority='all',colFilterCat='all',colDueFrom='',colDueTo='',sortField=null,sortDir='asc';
+let filterStatus='all',filterOwner='all',filterSource='all',colFilterPriority='all',colFilterCat='all',colDueFrom='',colDueTo='',sortField=null,sortDir='asc';
 let boardOwner='all',boardGroup='status',boardCatFilter='all',boardPriFilter='all';
 
 function applyFiltersAndSort(list){
@@ -1385,6 +1398,8 @@ function applyFiltersAndSort(list){
     if(filterStatus==='active'&&t.done)return false;
     if(filterStatus==='done'&&!t.done)return false;
     if(filterOwner==='mine'&&!isMine(t))return false;
+    if(filterSource==='note'&&t.source!=='note')return false;
+    if(filterSource==='task'&&t.source==='note')return false;
     if(colFilterPriority!=='all'&&t.priority!==colFilterPriority)return false;
     if(colFilterCat!=='all'&&t.category!==colFilterCat)return false;
     if(colDueFrom&&(t.due||'')<colDueFrom)return false;
@@ -1426,9 +1441,9 @@ function renderList(){
   if(!rows.length){el.innerHTML=`<div class="empty-state"><div class="emoji">${!total?'&#128203;':'&#128269;'}</div><p>${!total?'No tasks yet — add one to get started.':'No tasks match the current filters.'}</p></div>`;return;}
   el.innerHTML=rows.map(({task:t,isChild})=>{
     const df=formatDate(t.due),cc=childCount(t.id),dc=doneChildCount(t.id),ac=(t.attachments||[]).length,canEdit=isMine(t);
-    return`<div class="task-row${t.done?' done':''}${isChild?' is-child':''}" data-id="${t.id}">
+    return`<div class="task-row${t.done?' done':''}${isChild?' is-child':''}${t.source==='note'?' from-note':''}" data-id="${t.id}">
       <div class="task-row-check" data-check="${t.id}"><span class="task-row-check-icon">&#10003;</span></div>
-      <div class="task-row-title">${isChild?'<span style="font-size:10px;color:var(--accent);margin-right:3px">&#8627;</span>':''}${esc(t.title)}${t.recur_group?' <span style="font-size:10px;color:var(--text-muted)">&#128260;</span>':''}</div>
+      <div class="task-row-title">${isChild?'<span style="font-size:10px;color:var(--accent);margin-right:3px">&#8627;</span>':''}${esc(t.title)}${t.recur_group?' <span style="font-size:10px;color:var(--text-muted)">&#128260;</span>':''}${t.source==='note'?' <span class="note-source-tag">&#128221; note</span>':''}</div>
       <div class="task-row-cell"><span class="badge badge-${t.priority}">${pLabel(t.priority)}</span></div>
       <div class="task-row-cell"><span class="badge badge-cat">${esc(t.category)}</span></div>
       <div class="task-row-cell">${df?`<span class="due-lbl ${df.cls}">${esc(df.label)}</span>`:''}</div>
@@ -1445,6 +1460,7 @@ function renderList(){
   el.querySelectorAll('.task-row').forEach(r=>r.addEventListener('click',()=>openDetail(r.dataset.id)));
 }
 document.querySelectorAll('[data-owner]').forEach(btn=>{btn.addEventListener('click',()=>{document.querySelectorAll('[data-owner]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');filterOwner=btn.dataset.owner;renderList();});});
+document.querySelectorAll('[data-source]').forEach(btn=>{btn.addEventListener('click',()=>{document.querySelectorAll('[data-source]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');filterSource=btn.dataset.source;renderList();});});
 document.querySelectorAll('[data-owner-board]').forEach(btn=>{btn.addEventListener('click',()=>{document.querySelectorAll('[data-owner-board]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');boardOwner=btn.dataset.ownerBoard;renderBoard();});});
 
 /* ══ BOARD ══ */
@@ -1492,7 +1508,7 @@ function renderBoard(){
 }
 function boardCardHTML(t){
   const df=formatDate(t.due),cc=childCount(t.id),dc=doneChildCount(t.id),ac=(t.attachments||[]).length,canEdit=isMine(t);
-  return`<div class="board-card${t.done?' done':''}${t.parent_id?' is-child':''}" data-id="${t.id}" draggable="${canEdit}">
+  return`<div class="board-card${t.done?' done':''}${t.parent_id?' is-child':''}${t.source==='note'?' from-note':''}" data-id="${t.id}" draggable="${canEdit}">
     <div class="priority-bar ${t.priority}"></div>
     <div class="board-card-title">${t.parent_id?'<span style="font-size:10px;color:var(--accent)">&#8627; </span>':''}${esc(t.title)}</div>
     <div class="board-card-meta"><span class="badge badge-${t.priority}">${pLabel(t.priority)}</span><span class="badge badge-cat">${esc(t.category)}</span>${df?`<span class="due-lbl ${df.cls}" style="font-size:10px">${esc(df.label)}</span>`:''}</div>
@@ -1592,8 +1608,16 @@ async function convertNoteToTask(noteId){
   const taskTitle=note.title||note.content?.slice(0,60)||'Untitled task';
   const taskNotes=note.content||'';
   const projId=currentProjectId==='personal'?null:currentProjectId;
-  const{data}=await sb.from('tasks').insert({title:taskTitle,notes:taskNotes,priority:'med',category:categories[0]||'Personal',done:false,attachments:[],created_by:currentUser.id,project_id:projId}).select().single();
-  if(data){tasks.unshift(data);renderNotes();toast('Task created from note');switchView('tasks');}
+  // Do NOT push to local array — realtime INSERT will handle it
+  const{error}=await sb.from('tasks').insert({
+    title:taskTitle,notes:taskNotes,priority:'med',
+    category:categories[0]||'Personal',done:false,
+    attachments:[],created_by:currentUser.id,
+    project_id:projId,source:'note'  // marks this task as converted from a note
+  });
+  if(error){toast('Error creating task: '+error.message);return;}
+  toast('Task created from note');
+  switchView('tasks');
 }
 
 /* ══ NOTE EDITOR ══ */
@@ -1652,12 +1676,14 @@ async function saveNote(){
         .update({title:title||null,content:content||null,source_type,updated_at:new Date().toISOString()})
         .eq('id',currentNoteId);
       if(error)throw error;
+      // Update local cache directly (realtime UPDATE event will also fire but that's fine)
       const i=notes.findIndex(n=>n.id===currentNoteId);
       if(i>=0)Object.assign(notes[i],{title:title||null,content:content||null,source_type});
       toast('Note saved');
     } else {
-      // Create new note
-      const{data,error}=await sb.from('notes')
+      // Create new note — do NOT push to local array here.
+      // The realtime INSERT subscription will add it automatically.
+      const{error}=await sb.from('notes')
         .insert({
           title:title||null,
           content:content||null,
@@ -1665,15 +1691,14 @@ async function saveNote(){
           project_id:projId,
           created_by:currentUser.id,
           attachments:[]
-        })
-        .select()
-        .single();
+        });
       if(error)throw error;
-      if(data)notes.unshift(data);
       toast('Note created');
     }
     closeNoteEditor();
-    renderNotes();
+    // For updates, re-render immediately since realtime may be slow.
+    // For inserts, realtime will trigger renderNotes() automatically.
+    if(currentNoteId)renderNotes();
   }catch(err){
     toast('Could not save note: '+err.message,4000);
     console.error('saveNote error:',err);
