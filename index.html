@@ -58,14 +58,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 
 /* APP SHELL */
 .app-shell{display:flex;flex-direction:column;min-height:100vh}
-.top-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;position:sticky;top:0;z-index:200;box-shadow:var(--shadow)}
-.top-bar-brand{font-size:15px;font-weight:600;letter-spacing:-.3px;color:var(--text);padding:14px 0;margin-right:20px;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.top-bar{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:200;box-shadow:var(--shadow)}
+.top-bar-row1{display:flex;align-items:center;padding:0 20px;height:52px;gap:8px}
+.top-bar-brand{font-size:15px;font-weight:600;letter-spacing:-.3px;color:var(--text);display:flex;align-items:center;gap:6px;flex-shrink:0}
 .top-bar-brand span{color:var(--accent)}
-.top-nav{display:flex;height:100%;flex:1;overflow-x:auto}
-.top-nav-btn{background:none;border:none;padding:0 14px;font-size:13px;font-family:'Inter',sans-serif;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;font-weight:500;transition:all .15s;display:flex;align-items:center;gap:5px;height:52px;white-space:nowrap;flex-shrink:0}
+.top-bar-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.top-nav{display:flex;overflow-x:auto;border-top:1px solid var(--border);padding:0 12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.top-nav::-webkit-scrollbar{display:none}
+.top-nav-btn{background:none;border:none;padding:0 14px;font-size:13px;font-family:'Inter',sans-serif;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;font-weight:500;transition:all .15s;display:flex;align-items:center;gap:5px;height:42px;white-space:nowrap;flex-shrink:0}
 .top-nav-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
 .top-nav-btn:hover:not(.active){color:var(--text);background:var(--surface2)}
-.top-bar-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
 .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--low);flex-shrink:0;transition:background .3s}
 .sync-dot.syncing{background:var(--med);animation:pulse .8s ease-in-out infinite alternate}
 .sync-dot.error{background:var(--high)}
@@ -492,8 +494,12 @@ select.filter-select:focus{border-color:var(--accent)}
 @media(max-width:700px){
   .project-sidebar{display:none}
   .main-panel,.main-content{padding:14px 10px}
-  .top-bar{padding:0 12px}
-  .top-nav-btn{padding:0 8px;font-size:12px;gap:3px}
+  .top-bar-row1{padding:0 12px;height:48px}
+  .top-bar-brand{font-size:14px}
+  .top-nav{padding:0 4px}
+  .top-nav-btn{padding:0 10px;font-size:12px;gap:3px;height:38px}
+  .user-name{display:none}
+  .btn-primary{padding:6px 10px;font-size:12px}
   .col-headers,.task-row{grid-template-columns:26px 1fr 80px 80px}
   .col-hdr:nth-child(n+4),.task-row-cell:nth-child(n+4){display:none}
   .task-row.is-child{margin-left:14px}
@@ -551,28 +557,31 @@ select.filter-select:focus{border-color:var(--accent)}
 <!-- MAIN APP -->
 <div class="app-shell" id="app-shell" style="display:none">
 <div class="top-bar">
-  <div class="top-bar-brand">&#10003; Task<span>Tracker</span></div>
+  <!-- Row 1: Brand + Add Task + User -->
+  <div class="top-bar-row1">
+    <div class="top-bar-brand">&#10003; Task<span>Tracker</span></div>
+    <div class="top-bar-right">
+      <div class="sync-dot" id="sync-dot" title="Sync status"></div>
+      <button class="btn-primary" id="btn-add-task">&#65291; Add task</button>
+      <div class="user-pill" id="user-pill">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <span class="user-name" id="user-name-display">User</span>
+        <button class="user-menu-btn" id="user-menu-btn">&#9660;</button>
+        <div class="user-dropdown" id="user-dropdown">
+          <div class="user-dropdown-item" id="dd-profile">&#128100; Profile</div>
+          <div class="user-dropdown-item danger" id="dd-signout">&#8594; Sign out</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Row 2: Navigation tabs (scrollable, full width) -->
   <nav class="top-nav">
     <button class="top-nav-btn active" data-view="tasks">&#128203; Tasks</button>
     <button class="top-nav-btn" data-view="board">&#128193; Board</button>
     <button class="top-nav-btn" data-view="calendar">&#128197; Calendar</button>
-    <button class="top-nav-btn" data-view="notes">&#128203; Notes</button>
+    <button class="top-nav-btn" data-view="notes">&#128221; Notes</button>
     <button class="top-nav-btn" data-view="more">&#9881; More</button>
   </nav>
-  <div class="top-bar-right">
-    <div class="sync-dot" id="sync-dot" title="Sync status"></div>
-    <button class="btn-primary" id="btn-add-task">&#65291; Add task</button>
-    <div class="user-pill" id="user-pill">
-      <div class="user-avatar" id="user-avatar">?</div>
-      <span class="user-name" id="user-name-display">User</span>
-      <button class="user-menu-btn" id="user-menu-btn">&#9660;</button>
-      <div class="user-dropdown" id="user-dropdown">
-        <div class="user-dropdown-item" id="dd-profile">&#128100; Profile</div>
-
-        <div class="user-dropdown-item danger" id="dd-signout">&#8594; Sign out</div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- APP BODY: sidebar + main panel -->
@@ -1038,43 +1047,67 @@ document.getElementById('signin-password').addEventListener('keydown',e=>{if(e.k
 async function initApp(user){
   currentUser=user;showLoading('Loading your workspace…');
   document.getElementById('auth-screen').classList.remove('visible');
-  const{data:profs}=await sb.from('profiles').select('id,full_name');
-  (profs||[]).forEach(p=>{profiles[p.id]=p;});
-  document.getElementById('user-avatar').textContent=ownerInitial(user.id);
-  document.getElementById('user-name-display').textContent=ownerName(user.id);
-  await loadAll();
-  subscribeRealtime();
-  // Check for invite token in URL
-  const urlParams=new URLSearchParams(window.location.search);
-  const inviteToken=urlParams.get('invite');
-  if(inviteToken){handleInviteToken(inviteToken);}
-  document.getElementById('app-shell').style.display='flex';
-  hideLoading();
-  renderSidebar();
-  renderList();
+  try{
+    const{data:profs}=await sb.from('profiles').select('id,full_name');
+    (profs||[]).forEach(p=>{profiles[p.id]=p;});
+    document.getElementById('user-avatar').textContent=ownerInitial(user.id);
+    document.getElementById('user-name-display').textContent=ownerName(user.id);
+    await loadAll();
+    subscribeRealtime();
+    const urlParams=new URLSearchParams(window.location.search);
+    const inviteToken=urlParams.get('invite');
+    if(inviteToken)handleInviteToken(inviteToken);
+  }catch(err){
+    console.error('initApp error:',err);
+    toast('Error loading workspace: '+err.message,5000);
+  }finally{
+    document.getElementById('app-shell').style.display='flex';
+    hideLoading();
+    renderSidebar();
+    renderList();
+  }
 }
 
 async function loadAll(){
-  await Promise.all([loadCategories(),loadProjects(),loadTasks(),loadNotes()]);
+  // Run each query independently so a missing table doesn't block others
+  await Promise.allSettled([
+    loadCategories(),
+    loadProjects(),
+    loadTasks(),
+    loadNotes()
+  ]);
 }
 async function loadTasks(){
-  const{data}=await sb.from('tasks').select('*').order('created_at',{ascending:false});
+  const{data,error}=await sb.from('tasks').select('*').order('created_at',{ascending:false});
+  if(error){console.warn('loadTasks:',error.message);tasks=[];return;}
   tasks=data||[];
 }
 async function loadCategories(){
-  const{data}=await sb.from('categories').select('name').order('name');
+  const{data,error}=await sb.from('categories').select('name').order('name');
+  if(error){console.warn('loadCategories:',error.message);categories=[...BUILT_IN];refreshAllCatSelects();return;}
   categories=data?[...new Set([...BUILT_IN,...data.map(c=>c.name)])].sort((a,b)=>{const ai=BUILT_IN.indexOf(a),bi=BUILT_IN.indexOf(b);if(ai>=0&&bi>=0)return ai-bi;if(ai>=0)return-1;if(bi>=0)return 1;return a.localeCompare(b);}):([...BUILT_IN]);
   refreshAllCatSelects();
 }
 async function loadProjects(){
-  const[{data:projs},{data:members}]=await Promise.all([
+  const[r1,r2]=await Promise.allSettled([
     sb.from('projects').select('*').order('created_at'),
     sb.from('project_members').select('*')
   ]);
-  projects=projs||[];projectMembers=members||[];
+  projects=r1.status==='fulfilled'?r1.value.data||[]:[];
+  projectMembers=r2.status==='fulfilled'?r2.value.data||[]:[];
+  if(r1.status==='rejected')console.warn('loadProjects:',r1.reason);
 }
 async function loadNotes(){
-  const{data}=await sb.from('notes').select('*').order('created_at',{ascending:false});
+  const{data,error}=await sb.from('notes').select('*').order('created_at',{ascending:false});
+  if(error){
+    console.warn('loadNotes:',error.message);
+    notes=[];
+    // If notes table is missing, show a helpful hint once
+    if(error.message.includes('does not exist')||error.code==='42P01'){
+      toast('Notes table missing — please run the latest setup.sql in Supabase',6000);
+    }
+    return;
+  }
   notes=data||[];
 }
 
@@ -1600,26 +1633,53 @@ function closeNoteEditor(){document.getElementById('note-editor-overlay').classL
 document.getElementById('ne-save-btn').addEventListener('click',saveNote);
 async function saveNote(){
   const title=document.getElementById('ne-title').value.trim();
-  // Collect content from active tab
+  // Collect content from the active input tab
   let content='',source_type='text';
   const activeTab=document.querySelector('.note-input-tab.active')?.dataset.ntab||'text';
-  if(activeTab==='text'){content=document.getElementById('ne-content').value;source_type='text';}
-  else if(activeTab==='image'){content=document.getElementById('ne-ocr-text').value;source_type='image';}
-  else if(activeTab==='document'){content=document.getElementById('ne-doc-text').value;source_type='document';}
-  else if(activeTab==='audio'){content=document.getElementById('ne-audio-text').value;source_type='audio';}
+  if(activeTab==='text'){content=document.getElementById('ne-content').value.trim();source_type='text';}
+  else if(activeTab==='image'){content=document.getElementById('ne-ocr-text').value.trim();source_type='image';}
+  else if(activeTab==='document'){content=document.getElementById('ne-doc-text').value.trim();source_type='document';}
+  else if(activeTab==='audio'){content=document.getElementById('ne-audio-text').value.trim();source_type='audio';}
   if(!title&&!content){toast('Add a title or some content before saving.');return;}
+  if(!currentUser){toast('Not signed in — please refresh the page.');return;}
   const projId=currentProjectId==='personal'?null:currentProjectId;
-  document.getElementById('ne-save-btn').disabled=true;
-  if(currentNoteId){
-    await sb.from('notes').update({title:title||null,content,source_type,updated_at:new Date().toISOString()}).eq('id',currentNoteId);
-    const i=notes.findIndex(n=>n.id===currentNoteId);if(i>=0)Object.assign(notes[i],{title,content,source_type});
-    toast('Note saved');
-  } else {
-    const{data}=await sb.from('notes').insert({title:title||null,content,source_type,project_id:projId,created_by:currentUser.id,attachments:[]}).select().single();
-    if(data){notes.unshift(data);toast('Note created');}
+  const btn=document.getElementById('ne-save-btn');
+  btn.disabled=true;btn.textContent='Saving…';
+  try{
+    if(currentNoteId){
+      // Update existing note
+      const{error}=await sb.from('notes')
+        .update({title:title||null,content:content||null,source_type,updated_at:new Date().toISOString()})
+        .eq('id',currentNoteId);
+      if(error)throw error;
+      const i=notes.findIndex(n=>n.id===currentNoteId);
+      if(i>=0)Object.assign(notes[i],{title:title||null,content:content||null,source_type});
+      toast('Note saved');
+    } else {
+      // Create new note
+      const{data,error}=await sb.from('notes')
+        .insert({
+          title:title||null,
+          content:content||null,
+          source_type,
+          project_id:projId,
+          created_by:currentUser.id,
+          attachments:[]
+        })
+        .select()
+        .single();
+      if(error)throw error;
+      if(data)notes.unshift(data);
+      toast('Note created');
+    }
+    closeNoteEditor();
+    renderNotes();
+  }catch(err){
+    toast('Could not save note: '+err.message,4000);
+    console.error('saveNote error:',err);
+  }finally{
+    btn.disabled=false;btn.textContent='Save note';
   }
-  document.getElementById('ne-save-btn').disabled=false;
-  closeNoteEditor();renderNotes();
 }
 
 document.getElementById('ne-delete-btn').addEventListener('click',()=>{if(currentNoteId)deleteNote(currentNoteId);closeNoteEditor();});
