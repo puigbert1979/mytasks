@@ -1140,23 +1140,29 @@ async function loadNotes(){
 }
 
 /* ══ REALTIME ══ */
+let realtimeChannel=null;
 function subscribeRealtime(){
-  sb.channel('tt-realtime').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},p=>{
+  // Remove any existing channel before creating a new one
+  if(realtimeChannel){
+    sb.removeChannel(realtimeChannel);
+    realtimeChannel=null;
+  }
+  realtimeChannel=sb.channel('tt-realtime-'+Date.now())
+  .on('postgres_changes',{event:'*',schema:'public',table:'tasks'},p=>{
     const{eventType:et,new:n,old:o}=p;
-    if(et==='INSERT'){tasks.unshift(n);}
+    if(et==='INSERT'){if(!tasks.find(t=>t.id===n.id))tasks.unshift(n);}
     else if(et==='UPDATE'){const i=tasks.findIndex(t=>t.id===n.id);if(i>=0)tasks[i]=n;else tasks.unshift(n);}
     else if(et==='DELETE'){tasks=tasks.filter(t=>t.id!==o.id);}
     refreshViews();
-  }).on('postgres_changes',{event:'*',schema:'public',table:'notes'},p=>{
+  })
+  .on('postgres_changes',{event:'*',schema:'public',table:'notes'},p=>{
     const{eventType:et,new:n,old:o}=p;
-    if(et==='INSERT'){
-      // Only add if not already in local array (avoids double-add when saveNote also pushes)
-      if(!notes.find(x=>x.id===n.id))notes.unshift(n);
-    }
+    if(et==='INSERT'){if(!notes.find(x=>x.id===n.id))notes.unshift(n);}
     else if(et==='UPDATE'){const i=notes.findIndex(x=>x.id===n.id);if(i>=0)notes[i]=n;else notes.unshift(n);}
     else if(et==='DELETE'){notes=notes.filter(x=>x.id!==o.id);}
     if(currentView==='notes')renderNotes();
-  }).on('postgres_changes',{event:'*',schema:'public',table:'projects'},async()=>{await loadProjects();renderSidebar();})
+  })
+  .on('postgres_changes',{event:'*',schema:'public',table:'projects'},async()=>{await loadProjects();renderSidebar();})
   .on('postgres_changes',{event:'*',schema:'public',table:'project_members'},async()=>{await loadProjects();renderSidebar();})
   .on('postgres_changes',{event:'*',schema:'public',table:'categories'},async()=>{await loadCategories();})
   .subscribe();
@@ -2206,13 +2212,26 @@ document.getElementById('dd-profile').addEventListener('click',()=>{document.get
 /* ══ BOOTSTRAP ══ */
 (async()=>{
   initSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
-  sb.auth.onAuthStateChange(async(event,session)=>{
-    if(event==='SIGNED_IN'&&session?.user){await initApp(session.user);}
-    else if(event==='SIGNED_OUT'||!session){currentUser=null;tasks=[];categories=[...BUILT_IN];projects=[];projectMembers=[];notes=[];document.getElementById('app-shell').style.display='none';showAuth();}
-  });
+  // Get existing session first
   const{data:{session}}=await sb.auth.getSession();
-  if(session?.user){await initApp(session.user);}
-  else{showAuth();}
+  if(session?.user){
+    await initApp(session.user);
+  } else {
+    showAuth();
+  }
+  // Listen for future auth changes (sign in / sign out)
+  // Use TOKEN_REFRESHED guard to avoid re-running initApp on every token refresh
+  sb.auth.onAuthStateChange(async(event,session)=>{
+    if(event==='SIGNED_IN'&&session?.user&&!currentUser){
+      // Only call initApp if not already initialised (avoids double-call on page load)
+      await initApp(session.user);
+    } else if(event==='SIGNED_OUT'){
+      currentUser=null;tasks=[];categories=[...BUILT_IN];projects=[];projectMembers=[];notes=[];
+      if(realtimeChannel){sb.removeChannel(realtimeChannel);realtimeChannel=null;}
+      document.getElementById('app-shell').style.display='none';
+      showAuth();
+    }
+  });
   setupImageDrop();setupDocDrop();setupAudioRecorder();
 })();
 </script>
