@@ -390,16 +390,7 @@ select.filter-select:focus{border-color:var(--accent)}
 .note-card:hover .note-card-actions{opacity:1}
 .note-converted-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;background:var(--purple-soft);color:var(--purple);border-radius:99px;padding:2px 8px;font-weight:600}
 .note-source-tag{font-size:10px;background:var(--purple-soft);color:var(--purple);border-radius:99px;padding:1px 7px;font-weight:500;flex-shrink:0;display:inline-flex;align-items:center;gap:3px}
-/* AI PANEL */
-.ai-panel{background:linear-gradient(135deg,#1e3a5f 0%,#1a1a40 100%);border:1px solid #2563eb44;border-radius:var(--radius-lg);padding:20px;margin-bottom:20px;color:#fff}
-.ai-panel h3{font-size:15px;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:8px}
-.ai-panel p{font-size:12px;color:rgba(255,255,255,.6);margin-bottom:14px}
-.ai-actions{display:flex;gap:8px;flex-wrap:wrap}
-.ai-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:var(--radius-sm);padding:7px 13px;font-size:12px;font-family:'Inter',sans-serif;color:#fff;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px;font-weight:500}
-.ai-btn:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.4)}
-.ai-btn:disabled{opacity:.5;cursor:not-allowed}
-.ai-result{background:rgba(255,255,255,.08);border-radius:var(--radius-sm);padding:12px;margin-top:12px;font-size:13px;color:rgba(255,255,255,.9);line-height:1.6;display:none;white-space:pre-wrap}
-.ai-result.vis{display:block}
+
 /* DETAIL MODAL */
 .detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;align-items:flex-start;justify-content:center;padding:32px 16px;overflow-y:auto}
 .detail-overlay.open{display:flex}
@@ -831,19 +822,7 @@ select.filter-select:focus{border-color:var(--accent)}
     <!-- HOME VIEW -->
     <div class="panel active" id="view-home">
       <div class="view-header"><div class="view-title" id="home-greeting">Good morning!</div></div>
-      <!-- AI Panel -->
-      <div class="ai-panel">
-        <h3>&#129302; AI Assistant <span style="font-size:11px;background:rgba(255,255,255,.15);padding:2px 8px;border-radius:99px;font-weight:400">Powered by Claude</span></h3>
-        <p>Summarise your tasks, break down work, or get a weekly digest — all in plain English.</p>
-        <div class="ai-actions">
-          <button class="ai-btn" id="ai-summarise">&#128203; Summarise today</button>
-          <button class="ai-btn" id="ai-overdue">&#128680; Overdue analysis</button>
-          <button class="ai-btn" id="ai-digest">&#128337; Weekly digest</button>
-          <button class="ai-btn" id="ai-suggest">&#129504; Suggest subtasks</button>
-        </div>
-        <div class="ai-result" id="ai-result"></div>
-      </div>
-      <!-- Stats row -->
+            <!-- Stats row -->
       <div class="dash-grid" id="dash-stats-grid"></div>
       <!-- Today + Overdue -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" id="dash-tasks-grid">
@@ -1752,58 +1731,6 @@ function renderHome(){
   // Bind clicks
   document.querySelectorAll('[data-dash-task]').forEach(el=>el.addEventListener('click',()=>openDetail(el.dataset.dashTask)));
 }
-
-/* ══ AI PANEL ══ */
-async function callClaude(prompt){
-  const res=await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':SUPABASE_ANON_KEY,'anthropic-version':'2023-06-01'},
-    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:prompt}]})
-  });
-  const data=await res.json();
-  if(data.error)throw new Error(data.error.message);
-  return data.content?.[0]?.text||'No response.';
-}
-
-// Note: Claude API requires your own API key. Using Anthropic API directly from browser
-// requires CORS to be allowed — use a proxy or Supabase Edge Function in production.
-// For now, the AI buttons use a simple task-list context without external calls.
-
-function buildTaskContext(){
-  const today=new Date().toISOString().slice(0,10);
-  const vt=tasks.filter(t=>!t.done).slice(0,30);
-  return vt.map(t=>`- [${t.type||'task'}] "${t.title}" | priority:${t.priority} | due:${t.due||'none'} | cat:${t.category}`).join('\n');
-}
-
-async function runAI(type){
-  const resultEl=document.getElementById('ai-result');
-  const btns=document.querySelectorAll('.ai-btn');
-  btns.forEach(b=>b.disabled=true);
-  resultEl.textContent='Thinking…';resultEl.classList.add('vis');
-  const today=new Date().toISOString().slice(0,10);
-  const ctx=buildTaskContext();
-  let prompt='';
-  if(type==='summarise')prompt=`You are a productivity assistant. Today is ${today}. Here are the user's active tasks:\n${ctx}\n\nGive a concise 3-sentence summary of what they have to focus on today. Be direct and practical.`;
-  else if(type==='overdue')prompt=`Today is ${today}. Here are the user's tasks:\n${ctx}\n\nIdentify any overdue tasks (due before today) and provide brief advice on how to prioritise or handle them. Be concise.`;
-  else if(type==='digest')prompt=`Today is ${today}. Here are the user's tasks:\n${ctx}\n\nWrite a friendly weekly digest in plain English: what's been happening, what's coming up, and one actionable suggestion. Keep it under 150 words.`;
-  else if(type==='suggest'){
-    const t=detailTaskId?tasks.find(x=>x.id===detailTaskId):tasks[0];
-    if(!t){resultEl.textContent='Open a task first, then click "Suggest subtasks".';return;}
-    prompt=`You are a project manager assistant. The user has a task: "${t.title}". Category: ${t.category}. Priority: ${t.priority}.\n\nSuggest 5 clear, actionable subtasks to complete this task. List them as:\n1. Subtask one\n2. Subtask two\netc.`;
-  }
-  try{
-    const response=await callClaude(prompt);
-    resultEl.textContent=response;
-  }catch(e){
-    // Claude API requires proper key — show a helpful fallback
-    resultEl.textContent=`AI feature requires an Anthropic API key configured on a server.\n\nTo enable: set up a Supabase Edge Function as a proxy with your Claude API key, or contact your admin.\n\nError: ${e.message}`;
-  }
-  btns.forEach(b=>b.disabled=false);
-}
-document.getElementById('ai-summarise').addEventListener('click',()=>runAI('summarise'));
-document.getElementById('ai-overdue').addEventListener('click',()=>runAI('overdue'));
-document.getElementById('ai-digest').addEventListener('click',()=>runAI('digest'));
-document.getElementById('ai-suggest').addEventListener('click',()=>runAI('suggest'));
 
 /* ══ FILTER STATE ══ */
 let filterStatus='all',filterOwner='all',filterSource='all',filterType='all',colFilterPriority='all',colFilterCat='all',colDueFrom='',colDueTo='',sortField=null,sortDir='asc';
