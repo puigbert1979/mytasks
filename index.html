@@ -539,6 +539,17 @@ select.filter-select:focus{border-color:var(--accent)}
 .note-input-section{display:none}.note-input-section.active{display:block}
 .note-textarea{width:100%;font-family:'Inter',sans-serif;font-size:13px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;outline:none;resize:vertical;min-height:180px;background:var(--bg);color:var(--text);line-height:1.7}
 .note-textarea:focus{border-color:var(--accent);background:var(--surface)}
+
+/* Paste zone */
+.paste-zone{border:2px dashed var(--border-strong);border-radius:var(--radius-sm);padding:16px;margin-bottom:10px;transition:all .15s;position:relative}
+.paste-zone:focus-within{border-color:var(--accent);background:var(--accent-soft)}
+.paste-zone-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.paste-zone-hint{font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.5}
+.paste-strip-badge{font-size:10px;background:var(--low-soft);color:var(--low);border-radius:99px;padding:2px 7px;font-weight:500}
+.btn-clipboard{background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px;font-size:12px;font-family:'Inter',sans-serif;color:var(--text-mid);cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .15s}
+.btn-clipboard:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.btn-clipboard.success{border-color:var(--low);color:var(--low);background:var(--low-soft)}
+
 .note-drop-zone{border:2px dashed var(--border-strong);border-radius:var(--radius-sm);padding:32px;text-align:center;cursor:pointer;transition:all .15s;color:var(--text-muted)}
 .note-drop-zone:hover,.note-drop-zone.drag{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
 .note-drop-zone p{font-size:13px;margin-top:8px}
@@ -1169,7 +1180,26 @@ CATEGORY: SCB / DUE: 2026-09-15</div>
         <button class="note-input-tab" data-ntab="document">&#128196; Document</button>
         <button class="note-input-tab" data-ntab="audio">&#127908; Audio</button>
       </div>
-      <div class="note-input-section active" id="ntab-text"><textarea class="note-textarea" id="ne-content" placeholder="Start writing your note&hellip;"></textarea></div>
+      <div class="note-input-section active" id="ntab-text">
+        <div class="paste-zone" id="ne-paste-zone">
+          <div class="paste-zone-label">
+            &#128203; Write or paste
+            <span class="paste-strip-badge">&#10003; Auto-strips Word formatting</span>
+            <div style="margin-left:auto;display:flex;gap:6px">
+              <button class="btn-clipboard" id="ne-paste-clipboard" title="Paste from clipboard">&#128203; Paste clipboard</button>
+              <button class="btn-clipboard" id="ne-clear-text" title="Clear">&#10005; Clear</button>
+            </div>
+          </div>
+          <textarea class="note-textarea" id="ne-content" placeholder="Start writing, paste from Word, Notepad, or any app&hellip;&#10;&#10;Tip: Ctrl+V pastes and automatically strips Word formatting." style="min-height:200px"></textarea>
+          <div class="paste-zone-hint">
+            &#128202; Drag a <strong>.txt</strong> file here to load it directly &nbsp;&middot;&nbsp;
+            &#128196; For Word docs (.docx) use the <strong>Document tab</strong> &nbsp;&middot;&nbsp;
+            &#9998; Paste from <strong>any app</strong> — formatting is stripped automatically
+          </div>
+        </div>
+        <!-- Text file drop target -->
+        <input type="file" id="ne-txt-drop-input" accept=".txt,.md,.csv,.log,.rtf" style="display:none">
+      </div>
       <div class="note-input-section" id="ntab-image">
         <div class="note-drop-zone" id="ne-image-drop"><div class="drop-icon">&#128247;</div><p>Drop an image here or click to upload</p><p style="font-size:11px;color:var(--text-muted);margin-top:4px">Text will be extracted automatically via OCR</p><input type="file" id="ne-image-input" accept="image/*" style="display:none"></div>
         <div class="note-processing-bar" id="ne-ocr-bar"><div class="note-processing-fill" id="ne-ocr-fill"></div></div>
@@ -2065,7 +2095,7 @@ function openNoteEditor(id){
   switchNoteTab('text');
   document.getElementById('ne-proj-display').textContent='Project: '+(currentProjectId==='personal'?'Personal':projName(currentProjectId));
   document.getElementById('note-editor-overlay').classList.add('open');
-  setTimeout(()=>document.getElementById('ne-title').focus(),50);
+  setTimeout(()=>{document.getElementById('ne-title').focus();setupPasteZone();},50);
 }
 function switchNoteTab(tab){
   document.querySelectorAll('.note-input-tab').forEach(t=>t.classList.toggle('active',t.dataset.ntab===tab));
@@ -2142,6 +2172,130 @@ async function processImage(file){
     }catch(err){label.textContent='OCR failed: '+err.message;bar.classList.remove('vis');}
   };
   reader.readAsDataURL(file);
+}
+
+/* ══ PASTE IMPROVEMENTS ══ */
+function stripWordFormatting(html){
+  // Remove Word/Office XML and HTML tags, keep plain text
+  let text = html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi,'')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi,'')
+    .replace(/<br\s*\/?>/gi,'\n')
+    .replace(/<\/p>/gi,'\n')
+    .replace(/<\/div>/gi,'\n')
+    .replace(/<\/li>/gi,'\n')
+    .replace(/<li[^>]*>/gi,'• ')
+    .replace(/<\/h[1-6]>/gi,'\n')
+    .replace(/<[^>]+>/g,'')
+    .replace(/&nbsp;/g,' ')
+    .replace(/&amp;/g,'&')
+    .replace(/&lt;/g,'<')
+    .replace(/&gt;/g,'>')
+    .replace(/&quot;/g,'"')
+    .replace(/&#39;/g,"'")
+    .replace(/\r\n/g,'\n')
+    .replace(/\r/g,'\n')
+    .replace(/\n{3,}/g,'\n\n') // max 2 blank lines
+    .trim();
+  return text;
+}
+
+function setupPasteZone(){
+  const textarea=document.getElementById('ne-content');
+  const zone=document.getElementById('ne-paste-zone');
+  const txtInput=document.getElementById('ne-txt-drop-input');
+  if(!textarea)return;
+
+  // Intercept paste events — strip HTML/Word formatting
+  textarea.addEventListener('paste',e=>{
+    const clipData=e.clipboardData||window.clipboardData;
+    // If clipboard has HTML (e.g. from Word), strip it
+    if(clipData.types.includes('text/html')){
+      e.preventDefault();
+      const html=clipData.getData('text/html');
+      const plain=clipData.getData('text/plain');
+      // Use stripped HTML if it has real content, fall back to plain text
+      const stripped=stripWordFormatting(html);
+      const result=stripped.length > plain.trim().length * 0.5 ? stripped : plain;
+      // Insert at cursor position
+      const start=textarea.selectionStart,end=textarea.selectionEnd;
+      textarea.value=textarea.value.slice(0,start)+result+textarea.value.slice(end);
+      textarea.selectionStart=textarea.selectionEnd=start+result.length;
+      toast('Formatted text pasted and cleaned');
+    }
+    // Plain text pastes normally
+  });
+
+  // Clipboard button — read from clipboard API
+  document.getElementById('ne-paste-clipboard')?.addEventListener('click',async()=>{
+    const btn=document.getElementById('ne-paste-clipboard');
+    try{
+      const text=await navigator.clipboard.readText();
+      if(!text){toast('Clipboard is empty');return;}
+      const start=textarea.selectionStart,end=textarea.selectionEnd;
+      const stripped=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+      textarea.value=textarea.value.slice(0,start)+stripped+textarea.value.slice(end);
+      textarea.selectionStart=textarea.selectionEnd=start+stripped.length;
+      textarea.focus();
+      btn.textContent='&#10003; Pasted!';btn.classList.add('success');
+      setTimeout(()=>{btn.textContent='&#128203; Paste clipboard';btn.classList.remove('success');},2000);
+    }catch(err){
+      // Clipboard API blocked (common on some browsers) — tell user to use Ctrl+V
+      toast('Use Ctrl+V to paste — browser blocked clipboard access');
+    }
+  });
+
+  // Clear button
+  document.getElementById('ne-clear-text')?.addEventListener('click',()=>{
+    if(textarea.value&&!confirm('Clear all text in this note?'))return;
+    textarea.value='';textarea.focus();
+  });
+
+  // Drag .txt / .md / .csv files onto the paste zone
+  zone.addEventListener('dragover',e=>{
+    const hasFile=e.dataTransfer.types.includes('Files');
+    if(hasFile){e.preventDefault();zone.style.borderColor='var(--accent)';zone.style.background='var(--accent-soft)';}
+  });
+  zone.addEventListener('dragleave',()=>{zone.style.borderColor='';zone.style.background='';});
+  zone.addEventListener('drop',async e=>{
+    zone.style.borderColor='';zone.style.background='';
+    const file=e.dataTransfer.files[0];
+    if(!file)return;
+    const name=file.name.toLowerCase();
+    const textExts=['.txt','.md','.csv','.log','.rtf','.ini','.json','.xml'];
+    if(textExts.some(ext=>name.endsWith(ext))){
+      e.preventDefault();
+      try{
+        const text=await file.text();
+        textarea.value=(textarea.value?textarea.value+'\n\n':'')+text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+        // Auto-set note title from filename if empty
+        const titleInput=document.getElementById('ne-title');
+        if(titleInput&&!titleInput.value){
+          titleInput.value=file.name.replace(/\.[^.]+$/,''); // strip extension
+        }
+        toast(`"${file.name}" loaded into note`);
+      }catch(err){toast('Could not read file: '+err.message);}
+    } else if(name.endsWith('.docx')||name.endsWith('.doc')){
+      e.preventDefault();
+      // Switch to document tab and process it there
+      switchNoteTab('document');
+      processDocument(file);
+      toast('Word file detected — switched to Document tab');
+    }
+  });
+
+  // Click the hidden file input for .txt files
+  txtInput?.addEventListener('change',async e=>{
+    const file=e.target.files[0];if(!file)return;
+    try{
+      const text=await file.text();
+      textarea.value=(textarea.value?textarea.value+'\n\n':'')+text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+      const titleInput=document.getElementById('ne-title');
+      if(titleInput&&!titleInput.value)titleInput.value=file.name.replace(/\.[^.]+$/,'');
+      toast(`"${file.name}" loaded`);
+    }catch(err){toast('Could not read file: '+err.message);}
+    e.target.value='';
+  });
 }
 
 /* ══ DOCUMENT PARSING ══ */
@@ -2547,7 +2701,7 @@ document.getElementById('dd-profile').addEventListener('click',()=>{document.get
       document.getElementById('app-shell').style.display='none';showAuth();
     }
   });
-  setupImageDrop();setupDocDrop();setupAudioRecorder();
+  setupImageDrop();setupDocDrop();setupAudioRecorder();setupPasteZone();
 })();
 </script>
 </body>
